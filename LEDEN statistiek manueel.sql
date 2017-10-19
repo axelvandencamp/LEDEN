@@ -1,4 +1,6 @@
-﻿--SET VARIABLES
+﻿-- en ook hier een github test (mag later weg)
+ --
+ --SET VARIABLES
 DROP TABLE IF EXISTS myvar;
 SELECT 
 	'2017-01-01'::date AS startdatum 
