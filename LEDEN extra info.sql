@@ -1,6 +1,8 @@
 ﻿-----------------------------------------------------------------------
 -- LEDEN extra gegeven: persoons- en lidmaatschapsgegevens
 -- - eg.: gebruikt om te koppelen aan IDs fiscale attesten
+--
+-- effe testen hoe dat hier werkt in die github
 -----------------------------------------------------------------------
 SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p.id database_id, 
