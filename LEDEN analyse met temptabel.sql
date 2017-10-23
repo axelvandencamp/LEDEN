@@ -1,4 +1,4 @@
-﻿--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- AANPASSINGEN:
 -- -------------
 -- 12/09/2017: onderbreking wordt vastgesteld na 9 maanden ipv 1 jaar
@@ -35,7 +35,8 @@ CREATE TEMP TABLE tempLEDENANALYSE (
 	Andere numeric, 
 	Belactie numeric,
 	herkomst text,
-	domi numeric);
+	domi numeric
+	);
 -----------------------------------------------------------------------------------------------------------------------------------
 -- structuur subqueries:
 -- - SQ3
@@ -236,21 +237,23 @@ INSERT into tempLEDENANALYSE
 		----------------------------------------------------------------------------------- Q4 --
 		ON SQ3.partner_id = SQ4.partner_id);
 
+--SELECT * FROM tempLEDENANALYSE WHERE partner_id IN (17319,17322)		
+
 DROP TABLE IF EXISTS tempLEDENANALYSEbyPartner;
 
 CREATE TEMP TABLE tempLEDENANALYSEbyPartner (
 	partner_id NUMERIC, duurtijd NUMERIC, duurtijd_voor_onderbreking NUMERIC, duurtijd_na_onderbreking NUMERIC, start_onderbreking NUMERIC, start_na_onderbreking NUMERIC,
 	/*date_from, jaar_start, date_to, jaar_einde,*/ jaar_start_1 NUMERIC, jaar_einde_L NUMERIC, 
-	via_afdeling NUMERIC, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie NUMERIC, herkomst TEXT, domi NUMERIC);
+	via_afdeling NUMERIC, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie NUMERIC, herkomst TEXT, domi NUMERIC, ooit_domi NUMERIC, domi_laatste_eindat DATE);
 
 INSERT INTO tempLEDENANALYSEbyPartner
 	(SELECT partner_id, SUM(duurtijd) duurtijd, 0, 0, MAX(start_onderbreking) start_onderbreking, MAX(start_na_onderbreking) start_na_onderbreking,
 		/*date_from, jaar_start, date_to, jaar_einde,*/ jaar_start_1, jaar_einde_L, 
-		via_afdeling, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie, herkomst, domi
+		via_afdeling, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie, herkomst, domi, 0, NULL
 	FROM tempLEDENANALYSE
 	GROUP BY partner_id, herkomst, via_afdeling, domi, belactie, jaar_start_1, jaar_einde_L);
 
---SELECT * FROM tempLEDENANALYSEbyPartner LIMIT 10	
+--SELECT * FROM tempLEDENANALYSEbyPartner WHERE partner_id IN (17319,17322) LIMIT 10	
 
 UPDATE tempLEDENANALYSEbyPartner la
 SET duurtijd_voor_onderbreking = x.duurtijd
@@ -262,13 +265,44 @@ SET duurtijd_na_onderbreking = x.duurtijd
 FROM (SELECT partner_id, SUM(duurtijd) duurtijd FROM tempLEDENANALYSE WHERE onderbreking = 1 GROUP BY partner_id) x 
 WHERE la.partner_id = x.partner_id;
 
+UPDATE tempLEDENANALYSEbyPartner la
+SET ooit_domi = 1, domi_laatste_eindat = x.last_debit_date
+FROM (SELECT SQsm1.partner_id, sm.last_debit_date FROM
+		(SELECT pb.partner_id, MAX(sm.id) sm_id
+		FROM res_partner_bank pb 
+		JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
+		--WHERE pb.partner_id IN (17319,17322)
+		GROUP BY pb.partner_id) SQsm1
+	JOIN sdd_mandate sm ON sm.id = SQsm1.sm_id
+	) x
+WHERE la.partner_id = x.partner_id;
+	
+
+
+
 
 SELECT * FROM tempLEDENANALYSEbyPartner;
 
 -----------------------------------------------------------------------------------
 -- test queries
 -----------------------------------------------------------------------------------
-/* 
+--/*
+SELECT pb.partner_id, sm.id, sm.last_debit_date, sm.state 
+FROM res_partner_bank pb 
+JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
+WHERE pb.partner_id IN (17319,17322)
+ORDER BY pb.partner_id
+
+SELECT SQsm1.partner_id, sm.last_debit_date FROM
+	(SELECT pb.partner_id, MAX(sm.id) sm_id
+	FROM res_partner_bank pb 
+	JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
+	--WHERE pb.partner_id IN (17319,17322)
+	GROUP BY pb.partner_id) SQsm1
+JOIN sdd_mandate sm ON sm.id = SQsm1.sm_id
+WHERE SQsm1.partner_id IN (17319,17322)
+
+ 
 SELECT DISTINCT(ml.remarks) FROM membership_membership_line ml WHERE LOWER(ml.remarks) LIKE 'bloem%' ORDER BY ml.remarks
 
 
@@ -302,7 +336,7 @@ WHERE partner_id = 259890
 
 
 SELECT * FROM product_product WHERE membership_product
-*/
+--*/
 -----------------------------------------------------------------------------------
 -- subquery voor selectie domi bij juiste lidmaatschapslijn: werkt nog niet correct
 -----------------------------------------------------------------------------------
