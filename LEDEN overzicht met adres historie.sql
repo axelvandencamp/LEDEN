@@ -13,21 +13,19 @@
 -- - aanduiden "vorige" & "volgende" voor 6200 leden duurde 45 min
 --------------------------------------------------------------
 --SET VARIABLES
-/*DROP TABLE IF EXISTS myvar;
+DROP TABLE IF EXISTS myvar;
 SELECT 
-	'2016-06-01'::date AS startdatum,
-	'2017-12-31'::date AS einddatum,
-	'2012-01-01'::date AS startdatumbosvooriedereen,
-	'2013-01-01'::date AS startdatumalledonateurs,
-	'16980'::numeric AS testID
+	--'2016-06-01'::date AS startdatum,
+	--'2017-12-31'::date AS einddatum,
+	'248566'::numeric AS Afdeling_ID
 INTO TEMP TABLE myvar;
-SELECT * FROM myvar;*/
+--SELECT * FROM myvar;
 ---------------------------------------------------------------------------------------------------------
 --CREATE TEMP TABLE
 DROP TABLE IF EXISTS tempLEDEN_verhuizers;
 
 CREATE TEMP TABLE tempLEDEN_verhuizers (
-	partner_id NUMERIC, postcode TEXT, gemeente TEXT, vorige_postcode TEXT, vorige_gemeente TEXT, huidige_afdeling TEXT, vorige_afdeling TEXT);
+	partner_id NUMERIC, postcode TEXT, gemeente TEXT, vorige_postcode TEXT, vorige_gemeente TEXT, huidige_afdeling_id NUMERIC, huidige_afdeling TEXT, vorige_afdeling_id NUMERIC, vorige_afdeling TEXT, beweging TEXT);
 ---------------------------------------------------------------------------------------------------------
 -- Eerst potentiële verhuizers ophalen 
 ---------------------------------------------------------------------------------------------------------
@@ -39,15 +37,15 @@ INSERT INTO tempLEDEN_potentieel
 	(SELECT pah.partner_id
 	FROM res_partner_address_history pah
 	WHERE pah.zip IN (SELECT cc.zip
-			FROM res_country_city cc 
+			FROM myvar v, res_country_city cc 
 				JOIN res_organisation_city_rel ocr ON cc.id = ocr.zip_id
-			WHERE partner_id = 248566)
+			WHERE partner_id = v.afdeling_id)
 	);
 ---------------------------------------------------------------------------------------------------------
 -- Verhuizers tabel vullen met potentiële verhuizers
 ---------------------------------------------------------------------------------------------------------
 INSERT INTO tempLEDEN_verhuizers
-	(SELECT p.id, p.zip, p.city, NULL, NULL, COALESCE(COALESCE(a2.name,a.name),'onbekend'), NULL
+	(SELECT p.id, p.zip, p.city, NULL, NULL, COALESCE(a2.id,a.id), COALESCE(COALESCE(a2.name,a.name),'onbekend'), NULL, 0, NULL
 	FROM tempLEDEN_potentieel pot, res_partner p
 		JOIN res_partner a ON p.department_id = a.id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
@@ -69,6 +67,14 @@ SET vorige_gemeente =
 	WHERE pah.partner_id = v.partner_id ORDER BY pah.id DESC LIMIT 1);
 
 UPDATE tempLEDEN_verhuizers v
+SET vorige_afdeling_id =
+	(SELECT a1.id
+	FROM res_country_city cc 
+		JOIN res_organisation_city_rel ocr ON cc.id = ocr.zip_id
+		JOIN res_partner a1 ON ocr.partner_id = a1.id
+	WHERE cc.zip = v.vorige_postcode);
+
+UPDATE tempLEDEN_verhuizers v
 SET vorige_afdeling =
 	(SELECT a1.name afdeling
 	FROM res_country_city cc 
@@ -76,12 +82,13 @@ SET vorige_afdeling =
 		JOIN res_partner a1 ON ocr.partner_id = a1.id
 	WHERE cc.zip = v.vorige_postcode);
 
+UPDATE tempLEDEN_verhuizers v
+SET beweging = 
+	CASE
+		WHEN huidige_afdeling_id <> vorige_afdeling_id AND huidige_afdeling_id = (SELECT afdeling_id FROM myvar) THEN 'in'
+		WHEN huidige_afdeling_id <> vorige_afdeling_id AND vorige_afdeling_id = (SELECT afdeling_id FROM myvar) THEN 'uit'
+		ELSE 'andere'
+	END;
 
-SELECT * FROM tempLEDEN_verhuizers WHERE huidige_afdeling = 'Natuurpunt Hasselt-Zonhoven' OR vorige_afdeling = 'Natuurpunt Hasselt-Zonhoven'
 
-
-
-
-
-
-
+SELECT * FROM myvar v, tempLEDEN_verhuizers WHERE huidige_afdeling_id = v.afdeling_id OR vorige_afdeling_id = v.afdeling_id;
