@@ -35,6 +35,7 @@ CREATE TEMP TABLE tempLEDENANALYSE (
 	Andere numeric, 
 	Belactie numeric,
 	herkomst text,
+	herkomst_detail text,
 	domi numeric
 	);
 -----------------------------------------------------------------------------------------------------------------------------------
@@ -60,7 +61,7 @@ INSERT into tempLEDENANALYSE
 		SQ4.start_na_onderbreking,
 		SQ3.duurtijd, SQ3.eerste_lidmaatschap, SQ3.jaar_start_1,  SQ3.laatste_lidmaatschap, SQ3.jaar_einde_L, SQ3.via_afdeling, 
 		SQ3.Kustcampagne, SQ3.Zomer_Antw, SQ3.Face_To_Face, SQ3.Geschenk, SQ3.Website, SQ3.Partners, SQ3.BC, SQ3.B_en_F, SQ3.MWA, SQ3.MA, SQ3.Andere, 
-		SQ3.Belactie, SQ3.herkomst, SQ3.domi	
+		SQ3.Belactie, SQ3.herkomst, SQ3.herkomst_detail, SQ3.domi	
 	FROM
 		(
 		--------------------------------------------------------------------------------
@@ -127,7 +128,7 @@ INSERT into tempLEDENANALYSE
 			CASE
 				WHEN COALESCE(moc.id,0) = 16 THEN 'Kust Campagne' 
 				WHEN COALESCE(moc.id,0) = 2 THEN 'Zomer van Antwerpen' 
-				WHEN COALESCE(moc.id,0) IN (11,3) THEN 'Face to Face'
+				WHEN COALESCE(moc.id,0) IN (11,3) THEN 'Evenementen'
 				WHEN COALESCE(moc.id,0) = 9 THEN 'Geschenklidmaatschap'
 				WHEN COALESCE(moc.id,0) = 7 THEN 'Website'
 				WHEN COALESCE(moc.id,0) = 6 THEN 'Partners'
@@ -138,6 +139,7 @@ INSERT into tempLEDENANALYSE
 				--BELACTIE nog toe te voegen
 				ELSE 'Andere'
 			END Herkomst,
+			mo.name herkomst_detail,
 			CASE
 				WHEN COALESCE(sm.sm_id,0) > 0 THEN 1 ELSE 0
 			END DOMI
@@ -244,14 +246,14 @@ DROP TABLE IF EXISTS tempLEDENANALYSEbyPartner;
 CREATE TEMP TABLE tempLEDENANALYSEbyPartner (
 	partner_id NUMERIC, duurtijd NUMERIC, duurtijd_voor_onderbreking NUMERIC, duurtijd_na_onderbreking NUMERIC, start_onderbreking NUMERIC, start_na_onderbreking NUMERIC,
 	/*date_from, jaar_start, date_to, jaar_einde,*/ jaar_start_1 NUMERIC, jaar_einde_L NUMERIC, 
-	via_afdeling NUMERIC, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie NUMERIC, herkomst TEXT, domi NUMERIC, ooit_domi NUMERIC, domi_laatste_eindat DATE);
+	via_afdeling NUMERIC, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie NUMERIC, herkomst TEXT, herkomst_detail TEXT, domi NUMERIC, ooit_domi NUMERIC, domi_laatste_eindat DATE);
 
 INSERT INTO tempLEDENANALYSEbyPartner
 	(SELECT partner_id, SUM(duurtijd) duurtijd, 0, 0, MAX(start_onderbreking) start_onderbreking, MAX(start_na_onderbreking) start_na_onderbreking,
 		/*date_from, jaar_start, date_to, jaar_einde,*/ jaar_start_1, jaar_einde_L, 
-		via_afdeling, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie, herkomst, domi, 0, NULL
+		via_afdeling, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie, herkomst, herkomst_detail, domi, 0, NULL
 	FROM tempLEDENANALYSE
-	GROUP BY partner_id, herkomst, via_afdeling, domi, belactie, jaar_start_1, jaar_einde_L);
+	GROUP BY partner_id, herkomst, herkomst_detail, via_afdeling, domi, belactie, jaar_start_1, jaar_einde_L);
 
 --SELECT * FROM tempLEDENANALYSEbyPartner WHERE partner_id IN (17319,17322) LIMIT 10	
 
@@ -286,7 +288,7 @@ SELECT * FROM tempLEDENANALYSEbyPartner;
 -----------------------------------------------------------------------------------
 -- test queries
 -----------------------------------------------------------------------------------
---/*
+/*
 SELECT pb.partner_id, sm.id, sm.last_debit_date, sm.state 
 FROM res_partner_bank pb 
 JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
@@ -336,7 +338,7 @@ WHERE partner_id = 259890
 
 
 SELECT * FROM product_product WHERE membership_product
---*/
+*/
 -----------------------------------------------------------------------------------
 -- subquery voor selectie domi bij juiste lidmaatschapslijn: werkt nog niet correct
 -----------------------------------------------------------------------------------
