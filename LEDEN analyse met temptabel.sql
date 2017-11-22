@@ -8,7 +8,6 @@ DROP TABLE IF EXISTS tempLEDENANALYSE;
 
 CREATE TEMP TABLE tempLEDENANALYSE (
 	partner_id numeric, 
-	ml_id numeric, 
 	date_from date, 
 	jaar_start numeric, 
 	date_to date, 
@@ -17,9 +16,7 @@ CREATE TEMP TABLE tempLEDENANALYSE (
 	onderbreking numeric,
 	start_na_onderbreking numeric,
 	duurtijd numeric, 
-	eerste_lidmaatschap numeric, 
 	jaar_start_1 numeric,  
-	laatste_lidmaatschap numeric, 
 	jaar_einde_L numeric, 
 	via_afdeling numeric, 
 	Kustcampagne numeric,
@@ -52,14 +49,14 @@ CREATE TEMP TABLE tempLEDENANALYSE (
 -- -     SQ4a (max"start_onderbreking": <> 1900 indien onderbreking voorkomt; op basis hiervan krijgt "onderbreking" een waarde)
 -----------------------------------------------------------------------------------------------------------------------------------
 INSERT into tempLEDENANALYSE
-	(SELECT SQ3.partner_id, SQ3.ml_id, SQ3.date_from, date_part('year',SQ3.date_from) jaar_start, SQ3.date_to, date_part('year',SQ3.date_to) jaar_einde,
+	(SELECT SQ3.partner_id, SQ3.start, date_part('year',SQ3.start) jaar_start, SQ3.stop, date_part('year',SQ3.stop) jaar_einde,
 		SQ4.start_onderbreking,
 		CASE
 			WHEN SQ4.start_onderbreking = 1900 THEN 0
-			WHEN SQ4.start_onderbreking < date_part('year',SQ3.date_to) THEN 1 ELSE 0
+			WHEN SQ4.start_onderbreking < date_part('year',SQ3.stop) THEN 1 ELSE 0
 		END onderbreking,
 		SQ4.start_na_onderbreking,
-		SQ3.duurtijd, SQ3.eerste_lidmaatschap, SQ3.jaar_start_1,  SQ3.laatste_lidmaatschap, SQ3.jaar_einde_L, SQ3.via_afdeling, 
+		SQ3.duurtijd, SQ3.jaar_start_1, SQ3.jaar_einde_L, SQ3.via_afdeling, 
 		SQ3.Kustcampagne, SQ3.Zomer_Antw, SQ3.Face_To_Face, SQ3.Geschenk, SQ3.Website, SQ3.Partners, SQ3.BC, SQ3.B_en_F, SQ3.MWA, SQ3.MA, SQ3.Andere, 
 		SQ3.Belactie, SQ3.herkomst, SQ3.herkomst_detail, SQ3.domi	
 	FROM
@@ -67,24 +64,17 @@ INSERT into tempLEDENANALYSE
 		--------------------------------------------------------------------------------
 		-- SQ3: nodig om de "onderbreking" mee te nemen naar volgende lijnen
 		--------------------------------------------------------------------------------
-		SELECT SQ1.partner_id, SQ1.ml_id, SQ1.date_from, SQ1.date_to,
-			LAG(SQ1.date_to,1,SQ1.date_from) OVER (PARTITION BY SQ1.partner_id ORDER BY SQ1.date_from) previous_date_to, --testwaarde
-			--p.membership_start,
-			--p.membership_end,
+		SELECT SQ1.partner_id, SQ1.start, SQ1.stop,
+			LAG(SQ1.start,1,SQ1.stop) OVER (PARTITION BY SQ1.partner_id ORDER BY SQ1.start) previous_date_to, --testwaarde
 			CASE
-				WHEN date_part('year',SQ1.date_from) = date_part('year',SQ1.date_to) AND date_part('month',age(SQ1.date_to,SQ1.date_from)) > 3 THEN 1
-				ELSE date_part('year',age(SQ1.date_to,SQ1.date_from)) 
+				WHEN date_part('month',SQ1.start) < 7 THEN date_part('year',age(SQ1.stop,SQ1.start)) + 1
+				WHEN date_part('month',SQ1.start) >= 7 AND date_part('year',SQ1.start) <> date_part('year',SQ1.stop) AND date_part('month',age(SQ1.stop,SQ1.start)) > 12 THEN date_part('year',age(SQ1.stop,SQ1.start)) -1
+				ELSE date_part('year',age(SQ1.stop,SQ1.start))	
 			END duurtijd,
-			date_part('year',SQ1.date_from) test_yf,
-			date_part('year',SQ1.date_to) test_yt,
-			date_part('month',age(SQ1.date_to,SQ1.date_from)) test_m,
-			CASE
-				WHEN SQ1.ml_id = SQ2.ml_id THEN 1 ELSE 0
-			END eerste_lidmaatschap,
+			date_part('year',SQ1.start) test_yf,
+			date_part('year',SQ1.stop) test_yt,
+			date_part('month',age(SQ1.stop,SQ1.start)) test_m,
 			date_part('year',SQ2.ml_date_from) jaar_start_1,
-			CASE
-				WHEN SQ1.ml_id = SQ5.ml_id THEN 1 ELSE 0
-			END laatste_lidmaatschap,
 			date_part('year',SQ5.ml_date_to) jaar_einde_L,
 			CASE
 				WHEN COALESCE(p5.id,0) > 0 THEN 1 ELSE 0
@@ -147,12 +137,11 @@ INSERT into tempLEDENANALYSE
 			--------------------------------------------------------------------
 			-- SQ1: ophalen van alle lidmaatschapslijnen
 			--------------------------------------------------------------------
-			(SELECT ml.partner partner_id, ml.id ml_id, ml.date_from, ml.date_to, recruiting_organisation_id, membership_origin_id
+			(SELECT DISTINCT p.id partner_id, /*ml.id ml_id,*/ p.membership_start "start", p.membership_stop stop, p.recruiting_organisation_id, p.membership_origin_id
 			FROM res_partner p
 				INNER JOIN membership_membership_line ml ON p.id = ml.partner
 				INNER JOIN product_product pp ON ml.membership_id = pp.id
-			WHERE pp.membership_product --AND ml.partner = 160452
-			ORDER BY ml.partner, ml.date_from
+			WHERE pp.membership_product --AND ml.partner = 14600
 			) SQ1
 			------------------------------------------------------------- SQ1 --
 			INNER JOIN 
