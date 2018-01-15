@@ -41,20 +41,19 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	sm.sm_acc_number iban,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
 	p.mobile gsm,
-	--REVERSE(COALESCE(p.email,p.email_work)),
-	--POSITION('@' IN REVERSE(COALESCE(p.email,p.email_work))),
-	--RIGHT(COALESCE(p.email,p.email_work),POSITION('@' IN REVERSE(COALESCE(p.email,p.email_work))))
-	COALESCE(i.reference,'') OGM,	--voor ledencijfers OGM code niet meegeven; geeft verdubbelingen
-	--ml.date_from ml_date_from,
-	--COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
-	--ml.state status,	--lidmaatschap(lijn) status
-	--/*
+	-- !!! gebruikt van sub query (3x) vertraagt het resultaat van de query                 !!!
+	-- !!! indien OGM, bedrag en product niet nodig in resultaat, best in commentaar zetten !!!
+	(SELECT OGM FROM _crm_leden_factuurinfo(ml.id) ) OGM,
+	(SELECT bedrag FROM _crm_leden_factuurinfo(ml.id) ) bedrag,
+	(SELECT product FROM _crm_leden_factuurinfo(ml.id) ) product,
+	--
 	p.membership_state status,
 	p.membership_start Lidmaatschap_startdatum, 
 	p.membership_stop Lidmaatschap_einddatum, 
 	p.membership_pay_date Betaaldatum, 
 	p.membership_end Recentste_einddatum_lidmaatschap, 
 	p.membership_cancel opzegdatum, --opzegdatum
+	_crm_opzegdatum_membership(p.id) opzegdatum_LML,
 	p.active,
 	mo.name herkomst_lidmaatschap,  --membership origin
 	p.address_state_id address_state, --waarde 2 is een fout adres
@@ -92,9 +91,6 @@ FROM 	res_partner p
 	LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state, pb.bank_bic sm_bank_bic, pb.acc_number sm_acc_number FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id /*WHERE sm.state = 'valid'*/) sm ON pb_partner_id = p.id
 	--aangemaakt door 
 	JOIN res_users u ON u.id = p.create_uid
-	--facturen info
-	LEFT OUTER JOIN account_invoice_line il ON il.id = ml.account_invoice_line
-	LEFT OUTER JOIN account_invoice i ON i.id = il.invoice_id
 	--aanspreking
 	LEFT OUTER JOIN res_partner_title pt ON p.title = pt.id
 	--parnter info
@@ -111,12 +107,15 @@ FROM 	res_partner p
 --WHERE p.membership_nbr IN ('256073','523386')
 --WHERE p.id IN (254313,114244)
 --WHERE p.third_payer_id = 292110
---WHERE mo.id = 379
+--WHERE mo.id = 494
+--WHERE mo.id = 72 AND p.membership_start BETWEEN '2017-11-01' AND '2017-12-31'
+WHERE mm.id = 187
 --WHERE p.membership_end >= '2011-01-01' AND p.zip IN ('8500','8501','8501','8510','8510','8510','8510','8511','8520','8530','8531','8540','8550','8551','8552','8553','8554','8560','8560','8560','8570','8570','8570','8570','8572','8573','8580','8581','8581','8582','8583','8587','8587','8587','8770','8790','8791','8792','8793','8860','8870','8870','8870','8930','8930','8930','8800','8840','8830','8880','8890')
 --WHERE p.email IN ('kris.verleyen@gmail.com','filip.lepoudre@telenet.be')
 --p.email LIKE '%21solutions%' OR p.email LIKE '%ab_inbev%' OR p.email LIKE '%abn_amro%' OR p.email LIKE '%accenture%' OR p.email LIKE '%ag%' OR p.email LIKE '%agrofair%' OR p.email LIKE '%ahlers%' OR p.email LIKE '%albe_de_coker%' OR p.email LIKE '%alpro%' OR p.email LIKE '%antiheroes%' OR p.email LIKE '%antwerp_port%' OR p.email LIKE '%apco%' OR p.email LIKE '%ardo%' OR p.email LIKE '%argenta%' OR p.email LIKE '%arjowiggins%' OR p.email LIKE '%art_deco%' OR p.email LIKE '%atlas_copco%' OR p.email LIKE '%axa%' OR p.email LIKE '%baltimore_aircoil_company%' OR p.email LIKE '%beauvent%' OR p.email LIKE '%befimmo%' OR p.email LIKE '%befre%' OR p.email LIKE '%beiersdorf%' OR p.email LIKE '%bel&bo%' OR p.email LIKE '%belfius%' OR p.email LIKE '%beyers%' OR p.email LIKE '%beyers_koffie%' OR p.email LIKE '%bioplanet%' OR p.email LIKE '%bma_ergonomics%' OR p.email LIKE '%bopro%' OR p.email LIKE '%bosch%' OR p.email LIKE '%boydens%' OR p.email LIKE '%bpost%' OR p.email LIKE '%brandsenses%' OR p.email LIKE '%btc%' OR p.email LIKE '%bvba_32_ann_de_meulemeester%' OR p.email LIKE '%c&a%' OR p.email LIKE '%care%' OR p.email LIKE '%cargill%' OR p.email LIKE '%cartamundi%' OR p.email LIKE '%climact%' OR p.email LIKE '%cofely%' OR p.email LIKE '%cofinimmo%' OR p.email LIKE '%colruyt%' OR p.email LIKE '%coop_leuzoise_energies_du_futur%' OR p.email LIKE '%cru%' OR p.email LIKE '%dieteren_vw%' OR p.email LIKE '%dieteren_vw%' OR p.email LIKE '%danone%' OR p.email LIKE '%daoust%' OR p.email LIKE '%de_lijn%' OR p.email LIKE '%delhaize%' OR p.email LIKE '%deloitte%' OR p.email LIKE '%derbigum%' OR p.email LIKE '%ecores%' OR p.email LIKE '%ecover%' OR p.email LIKE '%edf_luminus%' OR p.email LIKE '%efico%' OR p.email LIKE '%electrabel%' OR p.email LIKE '%eml%' OR p.email LIKE '%enenco%' OR p.email LIKE '%esher%' OR p.email LIKE '%etex%' OR p.email LIKE '%exki%' OR p.email LIKE '%factor_4%' OR p.email LIKE '%faitrade_belgium%' OR p.email LIKE '%ferrero%' OR p.email LIKE '%fondation_generations_futures%' OR p.email LIKE '%fost_plus%' OR p.email LIKE '%freshfields%' OR p.email LIKE '%greencaps%' OR p.email LIKE '%iba%' OR p.email LIKE '%iba%' OR p.email LIKE '%ichec%' OR p.email LIKE '%ikea%' OR p.email LIKE '%infrabel%' OR p.email LIKE '%intellisol%' OR p.email LIKE '%iris_group%' OR p.email LIKE '%janssen_pharma%' OR p.email LIKE '%joker%' OR p.email LIKE '%kbc%' OR p.email LIKE '%kiwa%' OR p.email LIKE '%kpmg%' OR p.email LIKE '%kpmg%' OR p.email LIKE '%la_lorraine%' OR p.email LIKE '%lidl%' OR p.email LIKE '%mca_recycling%' OR p.email LIKE '%mccain%' OR p.email LIKE '%mobistar%' OR p.email LIKE '%nagelmackers%' OR p.email LIKE '%nestle%' OR p.email LIKE '%nike%' OR p.email LIKE '%nike%' OR p.email LIKE '%nnof%' OR p.email LIKE '%passiefhuis_platform%' OR p.email LIKE '%pefc%' OR p.email LIKE '%pepsico%' OR p.email LIKE '%petercam%' OR p.email LIKE '%philippe_de_woot%' OR p.email LIKE '%proximus%' OR p.email LIKE '%pwc%' OR p.email LIKE '%quilla%' OR p.email LIKE '%randstad%' OR p.email LIKE '%rescoop%' OR p.email LIKE '%ricoh%' OR p.email LIKE '%rockwool%' OR p.email LIKE '%saint-gobain%' OR p.email LIKE '%siemens%' OR p.email LIKE '%sipef%' OR p.email LIKE '%sodexo%' OR p.email LIKE '%solvay%' OR p.email LIKE '%spadel%' OR p.email LIKE '%stib%' OR p.email LIKE '%strabag%' OR p.email LIKE '%swift%' OR p.email LIKE '%staff.telenet%' OR p.email LIKE '%thalys%' OR p.email LIKE '%triodos%' OR p.email LIKE '%ucb%' OR p.email LIKE '%umicore%' OR p.email LIKE '%unilever%' OR p.email LIKE '%van_marcke%' OR p.email LIKE '%veolia%' OR p.email LIKE '%vigeo%' OR p.email LIKE '%vlerick%' OR
 --p.email LIKE '%21solutions%' OR p.email LIKE '%ab-inbev%' OR p.email LIKE '%abn-amro%' OR p.email LIKE '%accenture%' OR p.email LIKE '%ag%' OR p.email LIKE '%agrofair%' OR p.email LIKE '%ahlers%' OR p.email LIKE '%albe-de-coker%' OR p.email LIKE '%alpro%' OR p.email LIKE '%antiheroes%' OR p.email LIKE '%antwerp-port%' OR p.email LIKE '%apco%' OR p.email LIKE '%ardo%' OR p.email LIKE '%argenta%' OR p.email LIKE '%arjowiggins%' OR p.email LIKE '%art-deco%' OR p.email LIKE '%atlas-copco%' OR p.email LIKE '%axa%' OR p.email LIKE '%baltimore-aircoil-company%' OR p.email LIKE '%beauvent%' OR p.email LIKE '%befimmo%' OR p.email LIKE '%befre%' OR p.email LIKE '%beiersdorf%' OR p.email LIKE '%bel&bo%' OR p.email LIKE '%belfius%' OR p.email LIKE '%beyers%' OR p.email LIKE '%beyers-koffie%' OR p.email LIKE '%bioplanet%' OR p.email LIKE '%bma-ergonomics%' OR p.email LIKE '%bopro%' OR p.email LIKE '%bosch%' OR p.email LIKE '%boydens%' OR p.email LIKE '%bpost%' OR p.email LIKE '%brandsenses%' OR p.email LIKE '%btc%' OR p.email LIKE '%bvba-32-ann-de-meulemeester%' OR p.email LIKE '%c&a%' OR p.email LIKE '%care%' OR p.email LIKE '%cargill%' OR p.email LIKE '%cartamundi%' OR p.email LIKE '%climact%' OR p.email LIKE '%cofely%' OR p.email LIKE '%cofinimmo%' OR p.email LIKE '%colruyt%' OR p.email LIKE '%coop-leuzoise-energies-du-futur%' OR p.email LIKE '%cru%' OR p.email LIKE '%dieteren-vw%' OR p.email LIKE '%dieteren-vw%' OR p.email LIKE '%danone%' OR p.email LIKE '%daoust%' OR p.email LIKE '%de-lijn%' OR p.email LIKE '%delhaize%' OR p.email LIKE '%deloitte%' OR p.email LIKE '%derbigum%' OR p.email LIKE '%ecores%' OR p.email LIKE '%ecover%' OR p.email LIKE '%edf-luminus%' OR p.email LIKE '%efico%' OR p.email LIKE '%electrabel%' OR p.email LIKE '%eml%' OR p.email LIKE '%enenco%' OR p.email LIKE '%esher%' OR p.email LIKE '%etex%' OR p.email LIKE '%exki%' OR p.email LIKE '%factor-4%' OR p.email LIKE '%faitrade-belgium%' OR p.email LIKE '%ferrero%' OR p.email LIKE '%fondation-generations-futures%' OR p.email LIKE '%fost-plus%' OR p.email LIKE '%freshfields%' OR p.email LIKE '%greencaps%' OR p.email LIKE '%iba%' OR p.email LIKE '%iba%' OR p.email LIKE '%ichec%' OR p.email LIKE '%ikea%' OR p.email LIKE '%infrabel%' OR p.email LIKE '%intellisol%' OR p.email LIKE '%iris-group%' OR p.email LIKE '%janssen-pharma%' OR p.email LIKE '%joker%' OR p.email LIKE '%kbc%' OR p.email LIKE '%kiwa%' OR p.email LIKE '%kpmg%' OR p.email LIKE '%kpmg%' OR p.email LIKE '%la-lorraine%' OR p.email LIKE '%lidl%' OR p.email LIKE '%mca-recycling%' OR p.email LIKE '%mccain%' OR p.email LIKE '%mobistar%' OR p.email LIKE '%nagelmackers%' OR p.email LIKE '%nestle%' OR p.email LIKE '%nike%' OR p.email LIKE '%nike%' OR p.email LIKE '%nnof%' OR p.email LIKE '%passiefhuis-platform%' OR p.email LIKE '%pefc%' OR p.email LIKE '%pepsico%' OR p.email LIKE '%petercam%' OR p.email LIKE '%philippe-de-woot%' OR p.email LIKE '%proximus%' OR p.email LIKE '%pwc%' OR p.email LIKE '%quilla%' OR p.email LIKE '%randstad%' OR p.email LIKE '%rescoop%' OR p.email LIKE '%ricoh%' OR p.email LIKE '%rockwool%' OR p.email LIKE '%saint-gobain%' OR p.email LIKE '%siemens%' OR p.email LIKE '%sipef%' OR p.email LIKE '%sodexo%' OR p.email LIKE '%solvay%' OR p.email LIKE '%spadel%' OR p.email LIKE '%stib%' OR p.email LIKE '%strabag%' OR p.email LIKE '%swift%' OR p.email LIKE '%staff.telenet%' OR p.email LIKE '%thalys%' OR p.email LIKE '%triodos%' OR p.email LIKE '%ucb%' OR p.email LIKE '%umicore%' OR p.email LIKE '%unilever%' OR p.email LIKE '%van-marcke%' OR p.email LIKE '%veolia%' OR p.email LIKE '%vigeo%' OR p.email LIKE '%vlerick%'
-WHERE mm.name = 'Niet Lid via website 112017'
+--WHERE mm.name = 'Niet Lid via website okt-nov '
+--WHERE p.membership_end BETWEEN '2013-01-01' AND '2015-12-31' AND _crm_opzegdatum_membership(p.id) BETWEEN '2017-11-01' AND '2017-12-31' -- lijst "late hernieuwers 1>5j" met status "cancelled"; foutief stopgezet;
 
 --LIMIT 100
 
@@ -126,4 +125,6 @@ WHERE mm.name = 'Niet Lid via website 112017'
 
 --SELECT partner sm_partner, max(id) sm_id FROM membership_membership_line ml WHERE  ml.partner = '55505' AND ml.membership_id IN (2,5,6,7,205,206,207,208) GROUP BY ml.partner
 
-
+--SELECT * FROM mailing_list_partner mlp LIMIT 100
+--SELECT * FROM mailing_list mlst LIMIT 100
+--SELECT * FROM mailing_mailing mm WHERE LOWER(mm.name) LIKE '012018%' LIMIT 100
