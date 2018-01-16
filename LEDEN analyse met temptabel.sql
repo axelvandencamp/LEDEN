@@ -137,11 +137,11 @@ INSERT into tempLEDENANALYSE
 			--------------------------------------------------------------------
 			-- SQ1: ophalen van alle lidmaatschapslijnen
 			--------------------------------------------------------------------
-			(SELECT DISTINCT p.id partner_id, /*ml.id ml_id,*/ p.membership_start "start", p.membership_stop stop, p.recruiting_organisation_id, p.membership_origin_id
+			(SELECT DISTINCT p.id partner_id, ml.id ml_id, ml.date_from "start", ml.date_to stop, p.recruiting_organisation_id, p.membership_origin_id
 			FROM res_partner p
 				INNER JOIN membership_membership_line ml ON p.id = ml.partner
 				INNER JOIN product_product pp ON ml.membership_id = pp.id
-			WHERE pp.membership_product --AND ml.partner = 14600
+			WHERE pp.membership_product AND ml.state = 'paid'--AND ml.partner IN (181890,100351)
 			) SQ1
 			------------------------------------------------------------- SQ1 --
 			INNER JOIN 
@@ -218,7 +218,7 @@ INSERT into tempLEDENANALYSE
 				FROM res_partner p
 					INNER JOIN membership_membership_line ml ON p.id = ml.partner
 					INNER JOIN product_product pp ON ml.membership_id = pp.id
-				WHERE pp.membership_product --AND ml.partner = 106076
+				WHERE pp.membership_product --AND ml.partner = 181890
 				ORDER BY ml.partner, ml.date_from
 				) SQ4a
 			--WHERE partner_id = 106076
@@ -273,87 +273,3 @@ WHERE la.partner_id = x.partner_id;
 
 
 SELECT * FROM tempLEDENANALYSEbyPartner;
-
------------------------------------------------------------------------------------
--- test queries
------------------------------------------------------------------------------------
-/*
-SELECT pb.partner_id, sm.id, sm.last_debit_date, sm.state 
-FROM res_partner_bank pb 
-JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
-WHERE pb.partner_id IN (17319,17322)
-ORDER BY pb.partner_id
-
-SELECT SQsm1.partner_id, sm.last_debit_date FROM
-	(SELECT pb.partner_id, MAX(sm.id) sm_id
-	FROM res_partner_bank pb 
-	JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
-	--WHERE pb.partner_id IN (17319,17322)
-	GROUP BY pb.partner_id) SQsm1
-JOIN sdd_mandate sm ON sm.id = SQsm1.sm_id
-WHERE SQsm1.partner_id IN (17319,17322)
-
- 
-SELECT DISTINCT(ml.remarks) FROM membership_membership_line ml WHERE LOWER(ml.remarks) LIKE 'bloem%' ORDER BY ml.remarks
-
-
-SELECT ml.partner partner_id, --ml.id ml_id, ml.date_from, ml.date_to, recruiting_organisation_id, membership_origin_id,
-	date_part('year',LAG(ml.date_to,1,ml.date_from) OVER (PARTITION BY ml.partner ORDER BY ml.date_from)) start_onderbreking
-FROM res_partner p
-	INNER JOIN membership_membership_line ml ON p.id = ml.partner
-	INNER JOIN product_product pp ON ml.membership_id = pp.id
-WHERE pp.membership_product
-	AND date_part('year',age(ml.date_from,(LAG(ml.date_to,1,ml.date_from) OVER (PARTITION BY ml.partner ORDER BY ml.date_from)))) > 1
-	AND ml.partner = 16896
-GROUP BY ml.partner
-
-
-
-SELECT SQ4a.partner_id , date_part('year',age(SQ4a.date_from,(LAG(SQ4a.date_to,1,SQ4a.date_from) OVER (PARTITION BY SQ4a.partner_id ORDER BY SQ4a.date_from)))) test,
-	date_part('year',LAG(SQ4a.date_to,1,SQ4a.date_from) OVER (PARTITION BY SQ4a.partner_id ORDER BY SQ4a.date_from)) test_start,
-	CASE
-		WHEN date_part('year',age(SQ4a.date_from,(LAG(SQ4a.date_to,1,SQ4a.date_from) OVER (PARTITION BY SQ4a.partner_id ORDER BY SQ4a.date_from)))) >= 1 
-		THEN date_part('year',LAG(SQ4a.date_to,1,SQ4a.date_from) OVER (PARTITION BY SQ4a.partner_id ORDER BY SQ4a.date_from)) 
-		ELSE 1900
-	END start_onderbreking
-FROM (SELECT ml.partner partner_id, ml.id ml_id, ml.date_from, ml.date_to, recruiting_organisation_id, membership_origin_id
-	FROM res_partner p
-		INNER JOIN membership_membership_line ml ON p.id = ml.partner
-		INNER JOIN product_product pp ON ml.membership_id = pp.id
-	WHERE pp.membership_product AND ml.partner = 259890
-	ORDER BY ml.partner, ml.date_from
-	) SQ4a
-WHERE partner_id = 259890
-
-
-SELECT * FROM product_product WHERE membership_product
-*/
------------------------------------------------------------------------------------
--- subquery voor selectie domi bij juiste lidmaatschapslijn: werkt nog niet correct
------------------------------------------------------------------------------------
-/*
-SELECT p_id, ml_id, date_from, date_to, --sm_start, sm_end, 
-	max(domi) domi
-FROM (
-	SELECT DISTINCT p.id p_id, ml.id ml_id, ml.date_from, ml.date_to, sm.sm_start, 
-		CASE
-			WHEN sm.sm_state = 'valid' THEN COALESCE(sm.sm_end,now()::date)
-			WHEN sm.sm_state <> 'valid' THEN COALESCE(sm.sm_end,'1099-01-01')
-		END sm_end,
-		CASE
-			WHEN sm.sm_start >= ml.date_from AND sm.sm_start > ml.date_to THEN 0
-			WHEN sm.sm_start >= ml.date_from AND sm.sm_start < ml.date_to THEN 1
-			WHEN sm.sm_start < ml.date_from AND CASE
-								WHEN sm.sm_state = 'valid' THEN COALESCE(sm.sm_end,now()::date)
-								WHEN sm.sm_state <> 'valid' THEN COALESCE(sm.sm_end,'1099-01-01')
-							END > ml.date_from THEN 1
-			ELSE 0
-		END domi
-	FROM res_partner p
-		INNER JOIN membership_membership_line ml ON p.id = ml.partner
-		LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.state sm_state, sm.signature_date sm_start, sm.last_debit_date sm_end FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id) sm ON pb_partner_id = p.id
-	WHERE p.id = 16709
-	ORDER BY date_from) SQ5
-GROUP BY ml_id, date_from, date_to, p_id
-ORDER BY date_from	
-*/
