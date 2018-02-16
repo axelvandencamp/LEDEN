@@ -269,7 +269,7 @@ WHERE x.r > 1*/
 --SELECT * FROM res_partner WHERE id = 250527
 --==================================================================
 /*
-SELECT p.id, p.name FROM res_partner p WHERE p.organisation_type_id = 1 AND LOWER(p.name) LIKE '%zutendaal%' 
+SELECT p.id, p.name FROM res_partner p WHERE p.organisation_type_id = 1 AND LOWER(p.name) LIKE '%zutendaal%'  
 
 SELECT p.id, RTRIM(LTRIM(p.name)) afdeling FROM res_partner p
 WHERE p.organisation_type_id = 1 AND
