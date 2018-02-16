@@ -24,33 +24,44 @@
 --				"UPDATE tempBerekenAfdracht_totalen" voor koepels aangepast
 --			Berekening "aantal leden"/afdeling of koepel aangepast: aangebrachte leden mogen maar 1x geteld worden 
 --				en tot voorheen werden die zowel geteld als lid en als aangebracht lid
+--v3.2	05/02/2018	"p.membership_start start_datum" toegevoegd aan "tempBerekenAfdracht" als extra controle in details dump
+--			"einddatum_hern" op '2017-11-03' gezet voor DEC (datum start aanmaak hernieuwingsfacturen 2018)
+--			"p.active" toegevoegd als veld "actief" in resultaat details voor controle (ook leeg veld wordt geëvalueerd)
+--v4.0	16/02/2018	berekeningswijze voor hernieuwingen over andere boeg gegooid:
+--			een hernieuwd lid heeft 
+--				een startdatum voor 01/09 van het vorige jaar
+--				een lidmaatschapslijn status 'betaald lid'
+--				ml.date_from <= 31/08/YYYY
+--				ml.date_to > 01/01/YYYY
+--			de periode wordt dus voor APR en DEC helemaal gelopen.  Het verschil is het resultaat voor DEC
 ------------------------------------------------------------------
 --CREATE TEMP VARs
 DROP TABLE IF EXISTS myvar;
 --ENKEL DE PERIODE AANPASSEN
 -- -indien ook gebruikt voor 2015 eerst terug testen!!!!
-SELECT 'APR'::text AS periode, '2017-01-01'::date AS startjaar, '2017-12-31'::date AS eindejaar, 
+SELECT 'DEC'::text AS periode, '2017-01-01'::date AS startjaar, '2017-12-31'::date AS eindejaar, 
 	'1999-01-01'::date AS startdatum_hern, '1999-01-01'::date AS einddatum_hern, '1999-01-01'::date AS startminhalfjaar, 
-	'1999-01-01'::date AS startdatum_n, '1999-01-01'::date AS einddatum_n
+	'1999-01-01'::date AS startdatum_n, '1999-01-01'::date AS einddatum_n, '1999-01-01'::date AS cutoff_hern_sept
 INTO TEMP TABLE myvar;
 UPDATE myvar
-	SET startdatum_hern = CASE WHEN periode = 'APR' THEN startjaar - '1 month'::interval WHEN periode = 'DEC' THEN startjaar + '4 month'::interval END,
-	einddatum_hern = CASE WHEN periode = 'APR' THEN eindejaar - '8 month'::interval WHEN periode = 'DEC' THEN eindejaar - '1 month'::interval END,
+	SET startdatum_hern = CASE WHEN periode = 'APR' THEN startjaar - '4 month'::interval WHEN periode = 'DEC' THEN startjaar + '4 month'::interval END,
+	einddatum_hern = CASE WHEN periode = 'APR' THEN eindejaar - '4 month'::interval WHEN periode = 'DEC' THEN eindejaar - '1 month'::interval END,
 	startdatum_n = CASE WHEN periode = 'APR' THEN startjaar WHEN periode = 'DEC' THEN startjaar + '4 month'::interval END,
 	einddatum_n = CASE WHEN periode = 'APR' THEN eindejaar - '8 month'::interval WHEN periode = 'DEC' THEN eindejaar END,
-	startminhalfjaar = eindejaar - '18 month'::interval;
+	startminhalfjaar = eindejaar - '18 month'::interval,
+	cutoff_hern_sept = eindejaar - '4 month'::interval;
 	--CASE WHEN periode = 'DEC' THEN startjaar + '5 month'::interval END startdatum_hern,
 	--CASE WHEN periode = 'DEC' THEN eindejaar - '1 month'::interval END einddatum_hern
 --voor NIEUWE leden tellen we JAN tem DEC; voor HERNIEUWINGEN hoort DEC bij het volgende jaar
 -----------------------------------------------
 -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! --
---UPDATE myvar SET einddatum_hern = '2016-11-17';  --hernieuwingsfacturen voor 2017 werden aangemaakt van 18/11/2016 tot 24/11/2016: 
+--UPDATE myvar SET einddatum_hern = '2017-11-03';  --hernieuwingsfacturen voor 2017 werden aangemaakt van 18/11/2016 tot 24/11/2016: 
 							--alles voor hernieuwd vanaf 18/11/2016 wordt dus meegenomen naar 2017
 							--hiermee moet ook rekening gehouden worden voor period APR 2017 waar de starddatum_hern zal moeten aangepast worden
 -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! --
 -----------------------------------------------
 -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! --
-UPDATE myvar SET startdatum_hern = '2016-11-18';  --hernieuwingsfacturen voor 2017 werden aangemaakt van 18/11/2016 tot 24/11/2016: 
+--UPDATE myvar SET startdatum_hern = '2016-11-18';  --hernieuwingsfacturen voor 2017 werden aangemaakt van 18/11/2016 tot 24/11/2016: 
 							--alles voor hernieuwd vanaf 18/11/2016 wordt dus meegenomen naar 2017
 							--hiermee moet ook rekening gehouden worden voor period APR 2017 waar de starddatum_hern zal moeten aangepast worden
 -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! --
@@ -64,38 +75,43 @@ DROP TABLE IF EXISTS tempBerekenAfdrachtHern;
 CREATE TEMP TABLE tempBerekenAfdrachtHern (id numeric);
 -------------------------------------
 DROP TABLE IF EXISTS tempBerekenAfdracht;
-CREATE TEMP TABLE tempBerekenAfdracht (id numeric, afdeling_id numeric, afdeling text, afdracht numeric(3,1), id_nieuw text, afdeling_aangebracht text, aanbreng_premie numeric(3,1), koepel_id numeric, koepel text, afdracht_koepel numeric(3,1), postcode text, betaaldatum date, "type" text);
+CREATE TEMP TABLE tempBerekenAfdracht (id numeric, afdeling_id numeric, afdeling text, afdracht numeric(3,1), id_nieuw text, afdeling_aangebracht text, aanbreng_premie numeric(3,1), koepel_id numeric, koepel text, afdracht_koepel numeric(3,1), postcode text, start_datum date, betaaldatum date, "type" text, actief text);
 -------------------------------------
 --berekening nieuwe leden in een jaar
 -------------------------------------
 INSERT INTO tempBerekenAfdrachtNieuw (
-SELECT p.id
+SELECT p.id--, p.inactive_id
 FROM myvar v, res_partner p
 WHERE p.membership_start BETWEEN startdatum_n AND einddatum_n
-	AND p.active
+	AND (p.active OR (p.active = 'false' AND COALESCE(p.inactive_id,0) IN (0,2,11)))
+	--AND p.id = 231667
 	);
+SELECT * FROM partner_inactive	
 -----------------------------------------
 --berekening hernieuwde leden in een jaar
 -----------------------------------------
 INSERT INTO tempBerekenAfdrachtHern (
-SELECT p.id
-FROM myvar, res_partner p
+SELECT p.id--, ml.date_from
+FROM myvar v, res_partner p
 	JOIN 
-		(SELECT DISTINCT ml.partner
+		(SELECT DISTINCT ml.partner, MIN(ml.date_from) date_from
 		--SELECT ml.*
 		FROM myvar v, membership_membership_line ml
-		WHERE membership_id IN (2,5,6,7,205,206,207,208)
-			AND 
+			JOIN product_product pp ON pp.id = ml.membership_id
+		WHERE pp.membership_product
+			/*AND 
 			CASE 
 			WHEN periode = 'APR' THEN
 				(ml.date_from BETWEEN v.startdatum_hern AND v.einddatum_hern OR v.startjaar BETWEEN ml.date_from AND ml.date_to)
 				AND ml.date_to > v.startjaar
 			WHEN periode = 'DEC' THEN ml.date_from BETWEEN v.startdatum_hern AND v.einddatum_hern
-			END
-			AND ml.state = 'paid'
-			--AND ml.partner = 147702
+			END*/
+			AND ml.date_from <= v.cutoff_hern_sept AND ml.date_to > v.startjaar
+			AND (ml.state = 'paid') --OR (ml.state = 'canceled' AND ml.date_cancel > v.eindejaar))
+			--AND ml.partner = 282008
+		GROUP BY ml.partner
 		) ml ON p.id = ml.partner
-WHERE p.active
+WHERE (p.active OR (p.active = 'false' AND COALESCE(p.inactive_id,0) IN (0,2,11))) --AND ml.date_from <= v.cutoff_hern_sept
 	);
 -----------------------------------------
 --SELECT * FROM tempBerekenAfdrachtNieuw
@@ -122,8 +138,10 @@ INSERT INTO tempBerekenAfdracht (
 		null::numeric koepel_id, '' koepel, 0 afdracht_koepel,
 		p.zip postcode,
 		--COALESCE(aml2.last_rec_date,ml.date_from) rec_date,
+		p.membership_start start_datum,
 		p.membership_pay_date betaaldatum,
-		'nieuw' "type"
+		'nieuw' "type",
+		p.active
 	FROM tempBerekenAfdrachtNieuw tban
 		JOIN res_partner p ON tban.id = p.id
 		--afdeling & afdeling eigenkeuze
@@ -150,9 +168,11 @@ INSERT INTO tempBerekenAfdracht (
 		COALESCE(a4.name,'onbekend') afdeling_aangebracht, 0 aanbreng_premie,
 		null::numeric koepel_id, '' koepel, 0 afdracht_koepel,
 		p.zip postcode,
+		p.membership_start start_datum, 
 		p.membership_pay_date betaaldatum,
-		'hernieuwing' "type"
-	FROM tempBerekenAfdrachtHern tbah
+		'hernieuwing' "type",
+		p.active
+	FROM myvar v, tempBerekenAfdrachtHern tbah
 		LEFT OUTER JOIN tempBerekenAfdrachtNieuw tban ON tbah.id = tban.id
 		JOIN res_partner p ON tbah.id = p.id
 		--afdeling & afdeling eigenkeuze
@@ -160,11 +180,11 @@ INSERT INTO tempBerekenAfdracht (
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 		--link naar wervende organisatie
 		LEFT OUTER JOIN res_partner a4 ON p.recruiting_organisation_id = a4.id		
-	WHERE tbah.id <> COALESCE(tban.id,0)
+	WHERE tbah.id <> COALESCE(tban.id,0) AND p.membership_start < startjaar - '4 month'::interval --AND p.id = 282008
 	);
 
 ---------------
---SELECT * FROM tempBerekenAfdracht;
+--SELECT * FROM tempBerekenAfdracht WHERE id = 286745;
 ---------------
 /*
 -------------------------------------------
@@ -251,59 +271,3 @@ SELECT afdeling_id, "afdeling/koepel", "aantal leden", afdracht, "leden aangebra
 FROM tempBerekenAfdracht_totalen 
 WHERE "afdeling/koepel" <> 'onbekend' AND "afdeling/koepel" <> 'geen koepel' --AND "sort" = 2
 ORDER BY "sort", "afdeling/koepel"
-
---SELECT SUM("aantal leden") FROM tempBerekenAfdracht_totalen WHERE "sort" = 1	
-	
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
---TEST voor DUBBELS (op basis van ID)
-/*SELECT a.*, x.r FROM tempBerekenAfdracht a JOIN 
-	(SELECT ROW_NUMBER() OVER (PARTITION BY id ORDER BY afdeling DESC) AS r,
-	id, afdeling_id, afdeling, afdracht, id_nieuw, afdeling_aangebracht, aanbreng_premie
-	FROM	tempBerekenAfdracht ) x	ON a.id = x.id
-WHERE x.r > 1*/
-
---SELECT * FROM tempNieuweLeden WHERE afdeling_aangebracht = '' AND aanbreng_premie <> 0--n_id = '250527'
-
---SELECT * FROM tempBerekenAfdracht WHERE id_nieuw = '250527'--afdeling_aangebracht = 'Natuurpunt Alken' AND aanbreng_premie > 0
-
---SELECT * FROM res_partner WHERE id = 250527
---==================================================================
-/*
-SELECT p.id, p.name FROM res_partner p WHERE p.organisation_type_id = 1 AND LOWER(p.name) LIKE '%zutendaal%'  
-
-SELECT p.id, RTRIM(LTRIM(p.name)) afdeling FROM res_partner p
-WHERE p.organisation_type_id = 1 AND
-	p.name IN ('Natuurpunt Aarschot ','Natuurpunt Alken','Natuurpunt As','Natuurpunt Begijnendijk','Natuurpunt Bekkevoort','Natuurpunt Beringen','Natuurpunt Bocholt',
-	'Natuurpunt Boortmeerbeek','Natuurpunt Borgloon','Natuurpunt Bree','Natuurpunt De Herk-Heers','Natuurpunt Diepenbeek','Natuurpunt Diest','Natuurpunt Genk',
-	'Natuurpunt Gete-Velpe','Natuurpunt Haacht vzw','Natuurpunt Ham','Natuurpunt Hamont-Achel','Natuurpunt Hasselt-Zonhoven','Natuurpunt Hechtel-Eksel','Natuurpunt Herent',
-	'Natuurpunt Vrienden van het Schulensbroek vzw','Natuurpunt Heusden-Zolder','Natuurpunt Opglabbeek','Natuurpunt Houthalen-Helchteren','Natuurpunt Kampenhout',
-	'Natuurpunt Kinrooi','Natuurpunt Kortenberg','Natuurpunt Lanaken','Natuurpunt Land van Voer, IJse en Lane','Natuurpunt Landen','Natuurpunt Leopoldsburg-Heppen',
-	'Natuurpunt Leuven ','Natuurpunt Linter','Natuurpunt Lubbeek ','Natuurpunt Lummen','Natuurpunt Maasland-Noord','Natuurpunt Maasmechelen',
-	'Natuurpunt Meeuwen-Gruitrode en Peer','Natuurpunt Neerpelt','Natuurpunt Nieuwerkerken','Natuurpunt Noord-Limburg','Natuurpunt Opglabbeek','Natuurpunt Regio Zelem',
-	'Natuurpunt Rotselaar','Natuurpunt Scherpenheuvel-Zichem','Natuurpunt Tessenderlo','Natuurpunt Tielt-Winge','Natuurpunt Tremelo','Natuurpunt Velpe-Mene',
-	'Natuurpunt Zaventem','Natuurpunt Zuidoost-Limburg','Natuurpunt Zutendaal','Natuurpunt De Vlasbek','Natuurpunt Gaverstreke','Natuurpunt Kortrijk',
-	'Natuurpunt Krekel Anzegem','Natuurpunt Waregem','Natuurpunt Avelgem','Natuurpunt Wevelgem-Menen','Natuurpunt Zwevegem','Natuurpunt De Buizerd','Natuurpunt Beernem',
-	'Natuurpunt Blankenberge','Natuurpunt Brugge','Natuurpunt De Haan','Natuurpunt Damme','Natuurpunt Jabbeke','Natuurpunt Knokke-Heist','Natuurpunt Oostkamp',
-	'Natuurpunt Gulke Putten','Natuurpunt Zedelgem','Natuurpunt Aalter','Natuurpunt Meetjeslandse Kreken','Natuurpunt Eeklo-Kaprijke-Evergem','Natuurpunt Maldegem-Knesselare',
-	'Natuurpunt De Ratel Nevele','Natuurpunt Lovendegem','Natuurpunt Waarschoot','Natuurpunt Zomergem','Natuurpunt Wervik','Natuurpunt IJzervallei',
-	'Natuurpunt Poperinge-Vleteren','Natuurpunt Westland','Natuurpunt Gistel-Oudenburg','Natuurpunt Ruidenberg','Natuurpunt Torhout','Natuurpunt Zwevegem','Natuurpunt Lubbeek ',
-	'Natuurpunt Zutendaal')
-ORDER BY p.name	
-*/
----------------
---test CASE 	
----------------
-/*
-SELECT DISTINCT ml.partner
-SELECT ml.*
-		FROM myvar v, membership_membership_line ml
-		WHERE membership_id IN (2,5,6,7,205,206,207,208)
-			AND CASE 
-			WHEN periode = 'APR' THEN
-				(ml.date_from BETWEEN v.startdatum_hern AND v.einddatum_hern OR v.startjaar BETWEEN ml.date_from AND ml.date_to)
-				AND ml.date_to > v.startjaar
-			WHEN periode = 'DEC' THEN ml.date_from BETWEEN v.startdatum_hern AND v.einddatum_hern
-			END	
-			AND ml.state = 'paid'
-			--AND ml.partner = 147702
-*/
