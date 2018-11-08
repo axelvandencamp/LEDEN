@@ -1,4 +1,4 @@
-﻿-----------------------------------------
+-----------------------------------------
 --
 -- Te gebruiken voor maandelijkse statistieken
 -- - leden per provincie
@@ -18,19 +18,21 @@
 --SET VARIABLES
 DROP TABLE IF EXISTS myvar;
 SELECT 
-	'2017-01-01'::date AS startdatum, 
-	'2018-12-31'::date AS einddatum,  --vanaf 01/07 lid tot einde volgende jaar
+	'2018-01-01'::date AS startdatum, 
+	'2019-12-31'::date AS einddatum,  --vanaf 01/07 lid tot einde volgende jaar
 	'2016-12-31'::date AS eindejaar,
 	'1999-01-01'::date AS basedatum,
-	'102324'::numeric AS ledenaantal_vorigjaar --eind 2016
+	'107333'::numeric AS ledenaantal_vorigjaar --eind 2016
+	--'102324'::numeric AS ledenaantal_vorigjaar --eind 2016
 	--'97362'::numeric AS ledenaantal_vorigjaar --eind 2015 
 	--,'95163'::numeric AS ledenaantal_vorigjaar --einde 2014
 	--,'14-221-295'::text AS uittreksel
-	--'248580'::numeric AS afdeling 	--248608 - Afdeling Westerlo
+	--'248494'::numeric AS afdeling 	--248608 - Afdeling Westerlo
 	--'2260'::text AS postcode	--2260 - postcode Westerlo
-	--'379'::numeric AS herkomst_lidmaatschap
+	--'494'::numeric AS herkomst_lidmaatschap  -- 494 = Lampiris
 	--'none'::text AS status
 	--'248585'::numeric AS wervende_organisatie
+	--, '16980'::numeric AS test_id
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
 --====================================================================
@@ -42,16 +44,24 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		WHEN p.gender = 'M' THEN 'Dhr.'
 		WHEN p.gender = 'V' THEN 'Mevr.'
 		ELSE pt.shortcut
-	END aanspreking,
+	END aanspreking,*/
 	p.gender AS geslacht,
-	p.name as partner,*/
+	--p.name as partner,
 	p.first_name as voornaam,
 	p.last_name as achternaam,
+	CASE
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' THEN p.first_name || ' en ' || p6.first_name ELSE p.first_name
+	END voornaam_lidkaart,
+	CASE
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
+	END achternaam_lidkaart,
+	--p.birthday,
 	--EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN ccs.name
 		ELSE p.street
 	END straat,
+	p.street2 building,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN p.street_nbr ELSE ''
 	END huisnummer, 
@@ -79,15 +89,19 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	c.name land,
 	p.email,
 	--COALESCE(ml.id::text,'') ml_id,
+	COALESCE(p.phone_work,p.phone) telefoonnr,
+	p.mobile gsm,
 	COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
 	mo.name herkomst_lidmaatschap,
 	p.membership_state huidige_lidmaatschap_status,
+	COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
 	p.membership_start Lidmaatschap_startdatum, 
 	p.membership_stop Lidmaatschap_einddatum,  
 	p.membership_pay_date betaaldatum,
 	p.membership_renewal_date hernieuwingsdatum,
 	p.membership_end recentste_einddatum_lidmaatschap,
 	p.membership_cancel membership_cancel,
+	_crm_opzegdatum_membership(p.id) opzegdatum_LML,
 	p.active,
 	p2.name wervend_lid,
 	p2.membership_nbr wl_lidnummer,
@@ -145,6 +159,7 @@ FROM 	myvar v, res_partner p
 	LEFT OUTER JOIN res_partner_title pt ON p.title = pt.id
 	--parnter info
 	LEFT OUTER JOIN res_partner a3 ON i.partner_id = a3.id
+	LEFT OUTER JOIN res_partner p6 ON p.relation_partner_id = p6.id
 	--wervend lid
 	LEFT OUTER JOIN res_partner p2 ON p.recruiting_member_id = p2.id
 	--wervende organisatie
@@ -170,7 +185,7 @@ WHERE 	p.active = 't'
 	-- extra controle op startdatum van het lidmaatschap (enkel nodig bij jaarovergang om leden in het nieuwe jaar gecreëerd af te trekken van de "huidige toestand" van het vorige jaar)
 	--AND p.membership_start < '2017-01-01'
 	--bepaald ID
-	--AND p.id = 285521
+	--AND p.id = v.test_id
 	-- gefactureerd en betaald via afdeling
 	--AND 	(	--specifiek voor vraag "Natuur.koepel"
 	--	mo.id IN (644,642,643,645,650,651,652,653,654,655,656,658,659,660,663,664,667,668,669)
@@ -181,6 +196,7 @@ WHERE 	p.active = 't'
 	--AND COALESCE(a2.id,a.id) = v.afdeling
 	--per postcode
 	--AND cc.zip = v.postcode
+	--AND cc.zip IN ('1540','1547','1570')
 	--enkel nieuwe
 	--AND p.membership_start >= v.startdatum
 	--aangemaakt via afdeling
@@ -208,16 +224,24 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		WHEN p.gender = 'M' THEN 'Dhr.'
 		WHEN p.gender = 'V' THEN 'Mevr.'
 		ELSE pt.shortcut
-	END aanspreking,
+	END aanspreking,*/
 	p.gender AS geslacht,
-	p.name as partner,*/
+	--p.name as partner,
 	p.first_name as voornaam,
 	p.last_name as achternaam,
+	CASE
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' THEN p.first_name || ' en ' || p6.first_name ELSE p.first_name
+	END voornaam_lidkaart,
+	CASE
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
+	END achternaam_lidkaart,
+	--p.birthday,
 	--EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN ccs.name
 		ELSE p.street
 	END straat,
+	p.street2 building,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN p.street_nbr ELSE ''
 	END huisnummer, 
@@ -245,15 +269,19 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	c.name land,
 	p.email email,
 	--COALESCE(ml.id::text,'') ml_id,
+	COALESCE(p.phone_work,p.phone) telefoonnr,
+	p.mobile gsm,
 	COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
 	mo.name herkomst_lidmaatschap,
 	p.membership_state huidige_lidmaatschap_status,
+	COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
 	p.membership_start Lidmaatschap_startdatum, 
 	p.membership_stop Lidmaatschap_einddatum,  
 	p.membership_pay_date betaaldatum,
 	p.membership_renewal_date hernieuwingsdatum,
 	p.membership_end recentste_einddatum_lidmaatschap,
 	p.membership_cancel membership_cancel,
+	_crm_opzegdatum_membership(p.id) opzegdatum_LML,
 	p.active,
 	p2.name wervend_lid,
 	p2.membership_nbr wl_lidnummer,
@@ -311,6 +339,7 @@ FROM 	myvar v, res_partner p
 	LEFT OUTER JOIN res_partner_title pt ON p.title = pt.id
 	--parnter info
 	--LEFT OUTER JOIN res_partner a3 ON i.partner_id = a3.id
+	LEFT OUTER JOIN res_partner p6 ON p.relation_partner_id = p6.id
 	--wervend lid
 	LEFT OUTER JOIN res_partner p2 ON p.recruiting_member_id = p2.id
 	--wervende organisatie
@@ -326,6 +355,7 @@ WHERE 	p.active = 't'
 	--AND COALESCE(a2.id,a.id) = v.afdeling
 	--per postcode
 	--AND cc.zip = v.postcode
+	--AND cc.zip IN ('1540','1547','1570')
 	--enkel nieuwe
 	--AND p.membership_start >= v.startdatum
 	--aangemaakt via afdeling
@@ -340,3 +370,6 @@ WHERE 	p.active = 't'
 	--AND p5.id = v.wervende_organisatie
 	--Leeftijd
 	--AND EXTRACT(YEAR from AGE(p.birthday)) > 65
+	--bepaald ID
+	--AND p.id = v.test_id
+	
