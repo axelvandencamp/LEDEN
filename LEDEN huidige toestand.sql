@@ -32,7 +32,7 @@ SELECT
 	--'494'::numeric AS herkomst_lidmaatschap  -- 494 = Lampiris
 	--'none'::text AS status
 	--'248585'::numeric AS wervende_organisatie
-	--, '16980'::numeric AS test_id
+	--, '17245'::numeric AS test_id
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
 --====================================================================
@@ -50,10 +50,10 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p.first_name as voornaam,
 	p.last_name as achternaam,
 	CASE
-		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' THEN p.first_name || ' en ' || p6.first_name ELSE p.first_name
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.first_name) > 0 THEN p.first_name || ' en ' || p6.first_name ELSE p.first_name
 	END voornaam_lidkaart,
 	CASE
-		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.last_name) > 0 THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
 	END achternaam_lidkaart,
 	--p.birthday,
 	--EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
@@ -230,10 +230,10 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p.first_name as voornaam,
 	p.last_name as achternaam,
 	CASE
-		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' THEN p.first_name || ' en ' || p6.first_name ELSE p.first_name
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.first_name) > 0 THEN p.first_name || ' en ' || p6.first_name ELSE p.first_name
 	END voornaam_lidkaart,
 	CASE
-		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.last_name) > 0 THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
 	END achternaam_lidkaart,
 	--p.birthday,
 	--EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
