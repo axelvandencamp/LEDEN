@@ -18,8 +18,8 @@
 --SET VARIABLES
 DROP TABLE IF EXISTS myvar;
 SELECT 
-	'2018-01-01'::date AS startdatum, 
-	'2019-12-31'::date AS einddatum,  --vanaf 01/07 lid tot einde volgende jaar
+	'2019-01-01'::date AS startdatum, 
+	'2020-12-31'::date AS einddatum,  --vanaf 01/07 lid tot einde volgende jaar
 	'2016-12-31'::date AS eindejaar,
 	'1999-01-01'::date AS basedatum,
 	'107333'::numeric AS ledenaantal_vorigjaar --eind 2016
@@ -55,13 +55,13 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	CASE
 		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.last_name) > 0 THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
 	END achternaam_lidkaart,
-	--p.birthday,
-	--EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
+	p.birthday,
+	EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
+	p.street2 building,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN ccs.name
 		ELSE p.street
 	END straat,
-	p.street2 building,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN p.street_nbr ELSE ''
 	END huisnummer, 
@@ -130,6 +130,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	CASE
 		WHEN COALESCE(p.opt_out,'f') = 'f' THEN 0 ELSE 1
 	END wenst_geen_email_van_NP,
+	p.iets_te_verbergen nooit_contacteren,
 	--CASE WHEN mo.name = 'website' THEN 1 ELSE 0 END via_website,
 	--CASE WHEN mo.name <> 'website' THEN 1 ELSE 0 END via_andere,
 	CASE WHEN login = 'apiuser' THEN 1 ELSE 0 END via_website,
@@ -235,8 +236,8 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	CASE
 		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.last_name) > 0 THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
 	END achternaam_lidkaart,
-	--p.birthday,
-	--EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
+	p.birthday,
+	EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN ccs.name
 		ELSE p.street
@@ -310,6 +311,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	CASE
 		WHEN COALESCE(p.opt_out,'f') = 'f' THEN 0 ELSE 1
 	END wenst_geen_email_van_NP,
+	p.iets_te_verbergen nooit_contacteren,
 	--CASE WHEN mo.name = 'website' THEN 1 ELSE 0 END via_website,
 	--CASE WHEN mo.name <> 'website' THEN 1 ELSE 0 END via_andere,
 	CASE WHEN login = 'apiuser' THEN 1 ELSE 0 END via_website,
