@@ -32,7 +32,7 @@ SELECT
 	--'494'::numeric AS herkomst_lidmaatschap  -- 494 = Lampiris
 	--'none'::text AS status
 	--'248585'::numeric AS wervende_organisatie
-	--, '17245'::numeric AS test_id
+	--, '17777'::numeric AS test_id
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
 --====================================================================
@@ -238,11 +238,11 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	END achternaam_lidkaart,
 	p.birthday,
 	EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
+	p.street2 building,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN ccs.name
 		ELSE p.street
 	END straat,
-	p.street2 building,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN p.street_nbr ELSE ''
 	END huisnummer, 
@@ -373,5 +373,4 @@ WHERE 	p.active = 't'
 	--Leeftijd
 	--AND EXTRACT(YEAR from AGE(p.birthday)) > 65
 	--bepaald ID
-	--AND p.id = v.test_id
-	
+	--AND p.id = v.test_id	
