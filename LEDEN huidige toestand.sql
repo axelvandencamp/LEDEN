@@ -106,6 +106,8 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p2.name wervend_lid,
 	p2.membership_nbr wl_lidnummer,
 	p5.name wervende_organisatie,
+	mm1.name tijdschrift1,
+	mm2.name tijdschrift2,
 	CASE
 		WHEN COALESCE(p.no_magazine,'f') = 't' THEN 1 ELSE 0 
 	END gn_magazine_gewenst,
@@ -165,6 +167,9 @@ FROM 	myvar v, res_partner p
 	LEFT OUTER JOIN res_partner p2 ON p.recruiting_member_id = p2.id
 	--wervende organisatie
 	LEFT OUTER JOIN res_partner p5 ON p.recruiting_organisation_id = p5.id
+	--tijdschriften
+	LEFT OUTER JOIN mailing_mailing mm1 ON mm1.id = p.periodical_1_id
+	LEFT OUTER JOIN mailing_mailing mm2 ON mm2.id = p.periodical_2_id
 --=============================================================================
 WHERE 	p.active = 't'	
 	--we tellen voor alle actieve leden
@@ -287,6 +292,8 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p2.name wervend_lid,
 	p2.membership_nbr wl_lidnummer,
 	p5.name wervende_organisatie,
+	mm1.name tijdschrift1,
+	mm2.name tijdschrift2,
 	CASE
 		WHEN COALESCE(p.no_magazine,'f') = 't' THEN 1 ELSE 0 
 	END gn_magazine_gewenst,
@@ -346,6 +353,9 @@ FROM 	myvar v, res_partner p
 	LEFT OUTER JOIN res_partner p2 ON p.recruiting_member_id = p2.id
 	--wervende organisatie
 	LEFT OUTER JOIN res_partner p5 ON p.recruiting_organisation_id = p5.id
+	--tijdschriften
+	LEFT OUTER JOIN mailing_mailing mm1 ON mm1.id = p.periodical_1_id
+	LEFT OUTER JOIN mailing_mailing mm2 ON mm2.id = p.periodical_2_id
 --=============================================================================
 WHERE 	p.active = 't'	
 	--we tellen voor alle actieve leden
@@ -373,4 +383,4 @@ WHERE 	p.active = 't'
 	--Leeftijd
 	--AND EXTRACT(YEAR from AGE(p.birthday)) > 65
 	--bepaald ID
-	--AND p.id = v.test_id	
+	--AND p.id = v.test_id
