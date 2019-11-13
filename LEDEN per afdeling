@@ -1,0 +1,75 @@
+--=================================================================
+--SET VARIABLES
+DROP TABLE IF EXISTS _AV_myvar;
+CREATE TEMP TABLE _AV_myvar 
+	(startdatum DATE, einddatum DATE, ledenaantal_vorigjaar NUMERIC);
+
+INSERT INTO _AV_myvar VALUES('2019-01-01',	--startdatum
+				'2020-12-31',				--einddatum
+				110306);					--ledenaantal_vorigjaar
+				
+SELECT * FROM _AV_myvar;
+--====================================================================
+--CREATE TMP TABLE
+/*
+DROP TABLE IF EXISTS _AV_temp_aantalperAfd;
+CREATE TABLE _AV_temp_aantalperAfd 
+	(id INTEGER, afdeling TEXT, aantal NUMERIC);
+
+--!!!! MANUEEL OPLADEN !!!!--
+--"S:\Ledenadministratie\Databeheer\Upld\LEDEN per afdeling 2018.csv (YYYY-1)"
+				
+SELECT * FROM _AV_temp_aantalperAfd;
+*/
+--====================================================================
+--CREATE TMP TABLE
+/*
+DROP TABLE IF EXISTS _AV_temp_LEDENcijfersperafdeling;
+CREATE TABLE _AV_temp_LEDENcijfersperafdeling 
+	(afd_id INTEGER, afdeling TEXT, "aantal_Y-1" NUMERIC, uitval NUMERIC, uitval_perc NUMERIC, nieuwe_leden NUMERIC, aantal_leden NUMERIC, groei NUMERIC);
+
+SELECT * FROM _AV_temp_LEDENcijfersperafdeling;
+*/
+--====================================================================
+INSERT INTO _AV_temp_LEDENcijfersperafdeling
+	(SELECT COALESCE(a2.id,a.id) afd_id, COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling, 
+		afd.aantal,
+		COUNT(DISTINCT p.id) uitval,
+		COUNT(DISTINCT p.id)/afd.aantal uitval_perc,
+		0, 0
+	FROM _AV_myvar v, res_partner p
+		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
+		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+		JOIN _AV_temp_aantalperAfd afd ON afd.id = COALESCE(a2.id,a.id)
+	WHERE p.membership_end = (v.startdatum + INTERVAL 'day -1')::date
+		AND p.membership_state <> 'canceled'
+	GROUP BY COALESCE(a2.id,a.id), COALESCE(COALESCE(a2.name,a.name),'onbekend'), afd.aantal);
+--====================================================================
+UPDATE _AV_temp_LEDENcijfersperafdeling T1
+SET nieuwe_leden = SQ1.aantal
+FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(a2.id,a.id) afd_id
+	FROM _AV_myvar v, res_partner p
+		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
+		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+	WHERE p.membership_state IN ('paid','invoiced','free')
+		AND p.membership_start >= v.startdatum
+	GROUP BY COALESCE(a2.id,a.id)) SQ1
+WHERE T1.afd_id = SQ1.afd_id;
+--====================================================================
+UPDATE _AV_temp_LEDENcijfersperafdeling T1
+SET "aantal_leden" = SQ1.aantal
+FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(a2.id,a.id) afd_id
+	FROM _AV_myvar v, res_partner p
+		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
+		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+	WHERE p.membership_state IN ('paid','invoiced','free')
+		--AND p.membership_start >= v.startdatum
+	GROUP BY COALESCE(a2.id,a.id)) SQ1
+WHERE T1.afd_id = SQ1.afd_id;
+--====================================================================
+UPDATE _AV_temp_LEDENcijfersperafdeling T1
+SET groei = SQ1.aantal
+FROM (SELECT (aantal_leden-"aantal_Y-1") aantal, afd_id FROM _AV_temp_LEDENcijfersperafdeling) SQ1
+WHERE T1.afd_id = SQ1.afd_id;
+--====================================================================
+SELECT * FROM _AV_temp_LEDENcijfersperafdeling;
