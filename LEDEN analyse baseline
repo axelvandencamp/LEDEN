@@ -1,0 +1,68 @@
+----------------------------------------------------------
+-- file "Ledenanalyse baseline.csv" onder S:\Ledenadministratie\Databeheer\Upld bevat de baseline voor de herkomst lidmaatschap
+-- deze baseline wordt gebruikt bij het lopen van de "LEDEN analyse (Marco).sql"
+-- dit om "Herkomst lidmaatschap" codes die door de tijd toch worden aangepast op te vangen
+--
+-- hiervoor wordt bij elke run van "LEDEN analyse.sql" de "baseline refresh" gedaan
+-- - de "Ledenanalyse baseline.csv" wordt opgeladen in de aan te maken tabel
+-- - de baseline wordt geselecteerd uit het resultaat van de nieuwe "LEDEN analyse" met toevoeging van de baseline_periode YYYYMM
+-- - deze data wordt geladen in de aangemaakte tabel "_AV_tempLEDENANALYSE_baseline_refresh"
+-- - de nieuwe partner_id's worden toegevoegd aan de tabel "_AV_tempLEDENANALYSE_baseline"
+-- - de tabel "_AV_tempLEDENANALYSE_baseline" wordt geexporteerd naar het bestand "Ledenanalyse baseline.csv"
+-- - dit is de nieuwe baseline
+-----------------------------------------------------------
+-- aanmaak "_AV_tempLEDENANALYSE_baseline"
+-----------------------------------------------------------
+DROP TABLE IF EXISTS _AV_tempLEDENANALYSE_baseline;
+
+CREATE TABLE _AV_tempLEDENANALYSE_baseline 
+	(partner_id numeric, baseline text, herkomst text, herkomst_detail text);
+
+-- !!! baseline data manueel opladen !!!
+-- S:\Ledenadministratie\Databeheer\Upld (delimiter [;] textindicator ["])
+
+-- "LEDEN analyse (Marco).sql" kan nu gelopen worden
+
+SELECT * FROM _AV_tempLEDENANALYSE_baseline;
+-----------------------------------------------------------
+-- aanmaak "_AV_tempLEDENANALYSE_baseline_refresh"
+-----------------------------------------------------------
+DROP TABLE IF EXISTS _AV_tempLEDENANALYSE_baseline_refresh;
+
+CREATE TABLE _AV_tempLEDENANALYSE_baseline_refresh 
+	(partner_id numeric, baseline text, herkomst text, herkomst_detail text);
+-----------------------------------------------------------
+-- toevoegen van refresh data aan "_AV_tempLEDENANALYSE_baseline"
+-----------------------------------------------------------
+-- !!! baseline_refresh data manueel opladen !!!
+-- S:\Ledenadministratie\Databeheer\Upld (delimiter [;] textindicator ["])
+-- !!! of bij het lopen van de LEDENanalyse selecteren uit temp !!!
+
+SELECT * FROM _AV_tempLEDENANALYSE_baseline_refresh;
+-- selectie voor refresh uit gelopen LEDEN analyse
+/*SELECT partner_id, 
+	EXTRACT(YEAR FROM now()::date)::text||
+										CASE 
+											WHEN LENGTH(EXTRACT(MONTH FROM now()::date)::text) < 2 
+											THEN '0'||EXTRACT(MONTH FROM now()::date)::text 
+											ELSE EXTRACT(MONTH FROM now()::date)::text 
+										END baseline, 
+	herkomst, herkomst_detail 
+FROM _AV_temp_LEDENANALYSEbyPartner;*/
+---
+INSERT INTO _AV_tempLEDENANALYSE_baseline
+-- ingeval van upload tabel
+-- (SELECT * FROM _AV_tempLEDENANALYSE_baseline_refresh br WHERE NOT(br.partner_id IN (SELECT partner_id FROM _AV_tempLEDENANALYSE_baseline) ) )
+-- ingeval data in tabel "_AV_temp_LEDENANALYSEbyPartner" beschikbaar is: verkiest de voorkeur
+(SELECT partner_id, 
+	EXTRACT(YEAR FROM now()::date)::text||
+										CASE 
+											WHEN LENGTH(EXTRACT(MONTH FROM now()::date)::text) < 2 
+											THEN '0'||EXTRACT(MONTH FROM now()::date)::text 
+											ELSE EXTRACT(MONTH FROM now()::date)::text 
+										END baseline, 
+	herkomst, herkomst_detail 
+FROM _AV_temp_LEDENANALYSEbyPartner lp WHERE NOT(lp.partner_id IN (SELECT partner_id FROM _AV_tempLEDENANALYSE_baseline) ) )
+---
+SELECT * FROM _AV_tempLEDENANALYSE_baseline --WHERE baseline = '201911'
+--DELETE FROM _AV_tempLEDENANALYSE_baseline WHERE baseline = '201911'
