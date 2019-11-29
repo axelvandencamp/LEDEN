@@ -1,6 +1,6 @@
 ----------------------------------------------------------
 -- file "Ledenanalyse baseline.csv" onder S:\Ledenadministratie\Databeheer\Upld bevat de baseline voor de herkomst lidmaatschap
--- deze baseline wordt gebruikt bij het lopen van de "LEDEN analyse (Marco).sql"
+-- deze baseline wordt gebruikt bij het lopen van de "LEDEN analyse.sql"
 -- dit om "Herkomst lidmaatschap" codes die door de tijd toch worden aangepast op te vangen
 --
 -- hiervoor wordt bij elke run van "LEDEN analyse.sql" de "baseline refresh" gedaan
@@ -19,9 +19,9 @@ CREATE TABLE _AV_tempLEDENANALYSE_baseline
 	(partner_id numeric, baseline text, herkomst text, herkomst_detail text);
 
 -- !!! baseline data manueel opladen !!!
--- S:\Ledenadministratie\Databeheer\Upld (delimiter [;] textindicator ["])
+-- S:\Ledenadministratie\Databeheer\Upld (delimiter [;] textindicator ["]; !!! er mogen geen single-quotes ['] in de file staan)
 
--- "LEDEN analyse (Marco).sql" kan nu gelopen worden
+-- "LEDEN analyse.sql" kan nu gelopen worden
 
 SELECT * FROM _AV_tempLEDENANALYSE_baseline;
 -----------------------------------------------------------
@@ -61,7 +61,7 @@ INSERT INTO _AV_tempLEDENANALYSE_baseline
 											THEN '0'||EXTRACT(MONTH FROM now()::date)::text 
 											ELSE EXTRACT(MONTH FROM now()::date)::text 
 										END baseline, 
-	herkomst, herkomst_detail 
+	herkomst, REPLACE(herkomst_detail,'''','') 
 FROM _AV_temp_LEDENANALYSEbyPartner lp WHERE NOT(lp.partner_id IN (SELECT partner_id FROM _AV_tempLEDENANALYSE_baseline) ) )
 ---
 SELECT * FROM _AV_tempLEDENANALYSE_baseline --WHERE baseline = '201911'
