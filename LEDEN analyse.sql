@@ -3,10 +3,11 @@
 -- -------------
 -- 12/09/2017: onderbreking wordt vastgesteld na 9 maanden ipv 1 jaar
 -- dd/09/2017: start_na_onderbreking (numeric - jaartal) toegevoegd
+-- 29/11/2018: controle op "belactie" toegevoegd in "SQ6: ophalen lidmaatschapslijnen met "bloem%" in Opmerkingen-veld"
 --------------------------------------------------------------------------------
-DROP TABLE IF EXISTS tempLEDENANALYSE;
+DROP TABLE IF EXISTS _AV_temp_LEDENANALYSE;
 
-CREATE TEMP TABLE tempLEDENANALYSE (
+CREATE TEMP TABLE _AV_temp_LEDENANALYSE (
 	partner_id numeric, 
 	date_from date, 
 	jaar_start numeric, 
@@ -48,7 +49,7 @@ CREATE TEMP TABLE tempLEDENANALYSE (
 -- -   SQ4b (toewijzen "start_onderbreking": geen onderbreking: 1900; wel onderbreking: jaartal einddatum vorige lidmaatschapslijn)
 -- -     SQ4a (max"start_onderbreking": <> 1900 indien onderbreking voorkomt; op basis hiervan krijgt "onderbreking" een waarde)
 -----------------------------------------------------------------------------------------------------------------------------------
-INSERT into tempLEDENANALYSE
+INSERT into _AV_temp_LEDENANALYSE
 	(SELECT SQ3.partner_id, SQ3.start, date_part('year',SQ3.start) jaar_start, SQ3.stop, date_part('year',SQ3.stop) jaar_einde,
 		SQ4.start_onderbreking,
 		CASE
@@ -172,11 +173,12 @@ INSERT into tempLEDENANALYSE
 			--------------------------------------------------------------------
 			-- SQ6: ophalen lidmaatschapslijnen met "bloem%" in Opmerkingen-veld
 			--------------------------------------------------------------------
-			(SELECT DISTINCT ml.partner partner_id
+			(SELECT DISTINCT ml.partner partner_id--, ml.remarks
 			FROM membership_membership_line ml
 				INNER JOIN product_product pp ON ml.membership_id = pp.id
-			WHERE LOWER(ml.remarks) LIKE '%bloem%' AND pp.membership_product --AND ml.partner = 220646
-			GROUP BY ml.partner 
+			WHERE (LOWER(ml.remarks) LIKE '%bloem%' OR LOWER(ml.remarks) LIKE 'belactie%')  AND pp.membership_product --AND ml.partner = 220646
+			--WHERE (LOWER(ml.remarks) = 'belactie 2018')  AND pp.membership_product --AND ml.partner = 220646
+			GROUP BY ml.partner--, ml.remarks
 			) SQ6
 			------------------------------------------------------------- SQ6 --
 			ON SQ6.partner_id = SQ1.partner_id
@@ -228,35 +230,35 @@ INSERT into tempLEDENANALYSE
 		----------------------------------------------------------------------------------- Q4 --
 		ON SQ3.partner_id = SQ4.partner_id);
 
---SELECT * FROM tempLEDENANALYSE WHERE partner_id IN (17319,17322)		
+--SELECT * FROM _AV_temp_LEDENANALYSE WHERE partner_id IN (17319,17322)		
 
-DROP TABLE IF EXISTS tempLEDENANALYSEbyPartner;
+DROP TABLE IF EXISTS _AV_temp_LEDENANALYSEbyPartner;
 
-CREATE TEMP TABLE tempLEDENANALYSEbyPartner (
+CREATE TABLE _AV_temp_LEDENANALYSEbyPartner (
 	partner_id NUMERIC, duurtijd NUMERIC, duurtijd_voor_onderbreking NUMERIC, duurtijd_na_onderbreking NUMERIC, start_onderbreking NUMERIC, start_na_onderbreking NUMERIC,
 	/*date_from, jaar_start, date_to, jaar_einde,*/ jaar_start_1 NUMERIC, jaar_einde_L NUMERIC, 
 	via_afdeling NUMERIC, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie NUMERIC, herkomst TEXT, herkomst_detail TEXT, domi NUMERIC, ooit_domi NUMERIC, domi_laatste_eindat DATE);
 
-INSERT INTO tempLEDENANALYSEbyPartner
+INSERT INTO _AV_temp_LEDENANALYSEbyPartner
 	(SELECT partner_id, SUM(duurtijd) duurtijd, 0, 0, MAX(start_onderbreking) start_onderbreking, MAX(start_na_onderbreking) start_na_onderbreking,
 		/*date_from, jaar_start, date_to, jaar_einde,*/ jaar_start_1, jaar_einde_L, 
 		via_afdeling, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie, herkomst, herkomst_detail, domi, 0, NULL
-	FROM tempLEDENANALYSE
+	FROM _AV_temp_LEDENANALYSE
 	GROUP BY partner_id, herkomst, herkomst_detail, via_afdeling, domi, belactie, jaar_start_1, jaar_einde_L);
 
---SELECT * FROM tempLEDENANALYSEbyPartner WHERE partner_id IN (17319,17322) LIMIT 10	
+--SELECT * FROM _AV_temp_LEDENANALYSEbyPartner WHERE partner_id IN (17319,17322) LIMIT 10	
 
-UPDATE tempLEDENANALYSEbyPartner la
+UPDATE _AV_temp_LEDENANALYSEbyPartner la
 SET duurtijd_voor_onderbreking = x.duurtijd
-FROM (SELECT partner_id, SUM(duurtijd) duurtijd FROM tempLEDENANALYSE WHERE onderbreking = 0 GROUP BY partner_id) x 
+FROM (SELECT partner_id, SUM(duurtijd) duurtijd FROM _AV_temp_LEDENANALYSE WHERE onderbreking = 0 GROUP BY partner_id) x 
 WHERE la.partner_id = x.partner_id;
 
-UPDATE tempLEDENANALYSEbyPartner la
+UPDATE _AV_temp_LEDENANALYSEbyPartner la
 SET duurtijd_na_onderbreking = x.duurtijd
-FROM (SELECT partner_id, SUM(duurtijd) duurtijd FROM tempLEDENANALYSE WHERE onderbreking = 1 GROUP BY partner_id) x 
+FROM (SELECT partner_id, SUM(duurtijd) duurtijd FROM _AV_temp_LEDENANALYSE WHERE onderbreking = 1 GROUP BY partner_id) x 
 WHERE la.partner_id = x.partner_id;
 
-UPDATE tempLEDENANALYSEbyPartner la
+UPDATE _AV_temp_LEDENANALYSEbyPartner la
 SET ooit_domi = 1, domi_laatste_eindat = x.last_debit_date
 FROM (SELECT SQsm1.partner_id, sm.last_debit_date FROM
 		(SELECT pb.partner_id, MAX(sm.id) sm_id
@@ -267,9 +269,103 @@ FROM (SELECT SQsm1.partner_id, sm.last_debit_date FROM
 	JOIN sdd_mandate sm ON sm.id = SQsm1.sm_id
 	) x
 WHERE la.partner_id = x.partner_id;
-	
+
+---------
+-- "_AV_temp_LEDENANALYSEbyPartner" updaten met baseline voor "herkomst lidmaatschap"
+---------
+UPDATE _AV_temp_LEDENANALYSEbyPartner lp
+SET herkomst = SQ1.herkomst, herkomst_detail = SQ1.herkomst_detail FROM (SELECT * FROM _AV_tempLEDENANALYSE_baseline) SQ1 
+WHERE SQ1.partner_id = lp.partner_id
+
+--------
+SELECT partner_id, duurtijd, duurtijd_voor_onderbreking, duurtijd_na_onderbreking, start_onderbreking, start_na_onderbreking, jaar_start_1, jaar_einde_l
+		via_afdeling, belactie, COALESCE(herkomst,'') herkomst, COALESCE(herkomst_detail,'') herkomst_detail, domi, ooit_domi, domi_laatste_eindat
+FROM _AV_temp_LEDENANALYSEbyPartner;
+
+-----------------------------------------------------------------------------------
+-- test queries
+-----------------------------------------------------------------------------------
+/*
+SELECT * FROM tempLEDENANALYSE WHERE partner_id = 181890
+SELECT * FROM tempLEDENANALYSEbyPartner WHERE partner_id = 181890
+
+
+SELECT pb.partner_id, sm.id, sm.last_debit_date, sm.state 
+FROM res_partner_bank pb 
+JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
+WHERE pb.partner_id IN (17319,17322)
+ORDER BY pb.partner_id
+
+SELECT SQsm1.partner_id, sm.last_debit_date FROM
+	(SELECT pb.partner_id, MAX(sm.id) sm_id
+	FROM res_partner_bank pb 
+	JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id 
+	--WHERE pb.partner_id IN (17319,17322)
+	GROUP BY pb.partner_id) SQsm1
+JOIN sdd_mandate sm ON sm.id = SQsm1.sm_id
+WHERE SQsm1.partner_id IN (17319,17322)
+
+ 
+SELECT DISTINCT(ml.remarks) FROM membership_membership_line ml WHERE LOWER(ml.remarks) LIKE 'bloem%' ORDER BY ml.remarks
+
+
+SELECT ml.partner partner_id, --ml.id ml_id, ml.date_from, ml.date_to, recruiting_organisation_id, membership_origin_id,
+	date_part('year',LAG(ml.date_to,1,ml.date_from) OVER (PARTITION BY ml.partner ORDER BY ml.date_from)) start_onderbreking
+FROM res_partner p
+	INNER JOIN membership_membership_line ml ON p.id = ml.partner
+	INNER JOIN product_product pp ON ml.membership_id = pp.id
+WHERE pp.membership_product
+	AND date_part('year',age(ml.date_from,(LAG(ml.date_to,1,ml.date_from) OVER (PARTITION BY ml.partner ORDER BY ml.date_from)))) > 1
+	AND ml.partner = 16896
+GROUP BY ml.partner
 
 
 
+SELECT SQ4a.partner_id , date_part('year',age(SQ4a.date_from,(LAG(SQ4a.date_to,1,SQ4a.date_from) OVER (PARTITION BY SQ4a.partner_id ORDER BY SQ4a.date_from)))) test,
+	date_part('year',LAG(SQ4a.date_to,1,SQ4a.date_from) OVER (PARTITION BY SQ4a.partner_id ORDER BY SQ4a.date_from)) test_start,
+	CASE
+		WHEN date_part('year',age(SQ4a.date_from,(LAG(SQ4a.date_to,1,SQ4a.date_from) OVER (PARTITION BY SQ4a.partner_id ORDER BY SQ4a.date_from)))) >= 1 
+		THEN date_part('year',LAG(SQ4a.date_to,1,SQ4a.date_from) OVER (PARTITION BY SQ4a.partner_id ORDER BY SQ4a.date_from)) 
+		ELSE 1900
+	END start_onderbreking
+FROM (SELECT ml.partner partner_id, ml.id ml_id, ml.date_from, ml.date_to, recruiting_organisation_id, membership_origin_id
+	FROM res_partner p
+		INNER JOIN membership_membership_line ml ON p.id = ml.partner
+		INNER JOIN product_product pp ON ml.membership_id = pp.id
+	WHERE pp.membership_product AND ml.partner = 259890
+	ORDER BY ml.partner, ml.date_from
+	) SQ4a
+WHERE partner_id = 259890
 
-SELECT * FROM tempLEDENANALYSEbyPartner;
+
+SELECT * FROM product_product WHERE membership_product
+*/
+-----------------------------------------------------------------------------------
+-- subquery voor selectie domi bij juiste lidmaatschapslijn: werkt nog niet correct
+-----------------------------------------------------------------------------------
+/*
+SELECT p_id, ml_id, date_from, date_to, --sm_start, sm_end, 
+	max(domi) domi
+FROM (
+	SELECT DISTINCT p.id p_id, ml.id ml_id, ml.date_from, ml.date_to, sm.sm_start, 
+		CASE
+			WHEN sm.sm_state = 'valid' THEN COALESCE(sm.sm_end,now()::date)
+			WHEN sm.sm_state <> 'valid' THEN COALESCE(sm.sm_end,'1099-01-01')
+		END sm_end,
+		CASE
+			WHEN sm.sm_start >= ml.date_from AND sm.sm_start > ml.date_to THEN 0
+			WHEN sm.sm_start >= ml.date_from AND sm.sm_start < ml.date_to THEN 1
+			WHEN sm.sm_start < ml.date_from AND CASE
+								WHEN sm.sm_state = 'valid' THEN COALESCE(sm.sm_end,now()::date)
+								WHEN sm.sm_state <> 'valid' THEN COALESCE(sm.sm_end,'1099-01-01')
+							END > ml.date_from THEN 1
+			ELSE 0
+		END domi
+	FROM res_partner p
+		INNER JOIN membership_membership_line ml ON p.id = ml.partner
+		LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.state sm_state, sm.signature_date sm_start, sm.last_debit_date sm_end FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id) sm ON pb_partner_id = p.id
+	WHERE p.id = 16709
+	ORDER BY date_from) SQ5
+GROUP BY ml_id, date_from, date_to, p_id
+ORDER BY date_from	
+*/
