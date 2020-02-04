@@ -7,6 +7,7 @@
 --
 -- OPMERKING
 -- - voor ledencijfers "OGM" in comment laten; geeft verdubbelingen
+-- - ook alle "ml." velden weglaten om zelfde reden
 -----------------------------------------
 
 --=================================================================
@@ -14,27 +15,22 @@
 -- REGEL voor ivm uitsluiting opgezegden herzien (of procedure van opzegging)
 --
 --=================================================================
-
 --SET VARIABLES
-DROP TABLE IF EXISTS myvar;
-SELECT 
-	'2019-01-01'::date AS startdatum, 
-	'2020-12-31'::date AS einddatum,  --vanaf 01/07 lid tot einde volgende jaar
-	'2016-12-31'::date AS eindejaar,
-	'1999-01-01'::date AS basedatum,
-	'107333'::numeric AS ledenaantal_vorigjaar --eind 2016
-	--'102324'::numeric AS ledenaantal_vorigjaar --eind 2016
-	--'97362'::numeric AS ledenaantal_vorigjaar --eind 2015 
-	--,'95163'::numeric AS ledenaantal_vorigjaar --einde 2014
-	--,'14-221-295'::text AS uittreksel
-	--'248494'::numeric AS afdeling 	--248608 - Afdeling Westerlo
-	--'2260'::text AS postcode	--2260 - postcode Westerlo
-	--'494'::numeric AS herkomst_lidmaatschap  -- 494 = Lampiris
-	--'none'::text AS status
-	--'248585'::numeric AS wervende_organisatie
-	--, '17777'::numeric AS test_id
-INTO TEMP TABLE myvar;
-SELECT * FROM myvar;
+DROP TABLE IF EXISTS _AV_myvar;
+CREATE TEMP TABLE _AV_myvar 
+	(startdatum DATE, einddatum DATE
+	 ,afdeling NUMERIC, postcode TEXT, herkomst_lidmaatschap NUMERIC, wervende_organisatie NUMERIC, test_id NUMERIC
+	 );
+
+INSERT INTO _AV_myvar VALUES('2020-01-01',	--startdatum
+				'2021-12-31',	--einddatum
+				248494, --afdeling 	
+				'2260', --postcode
+				494,  	--numeric 
+				248585,	--wervende_organisatie
+				'16382'	--numeric
+				);
+SELECT * FROM _AV_myvar;
 --====================================================================
 --====================================================================
 SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
@@ -92,10 +88,10 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	COALESCE(p.phone_work,p.phone) telefoonnr,
 	p.mobile gsm,
 	COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
-	mo.name herkomst_lidmaatschap,
+	COALESCE(mo.name,'') herkomst_lidmaatschap,
 	p.membership_state huidige_lidmaatschap_status,
 	COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
-	ml.date_from lml_date_from,
+	--ml.date_from lml_date_from,
 	p.membership_start Lidmaatschap_startdatum, 
 	p.membership_stop Lidmaatschap_einddatum,  
 	p.membership_pay_date betaaldatum,
@@ -139,9 +135,11 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	CASE WHEN login = 'apiuser' THEN 1 ELSE 0 END via_website,
 	CASE WHEN login <> 'apiuser' THEN 1 ELSE 0 END via_andere
 	--COALESCE(i.reference,'') OGM	--voor ledencijfers OGM code niet meegeven; geeft verdubbelingen
-FROM 	myvar v, res_partner p
+FROM 	_av_myvar v, res_partner p
 	--Voor de ontdubbeling veroorzaakt door meedere lidmaatschapslijnen
-	LEFT OUTER JOIN (SELECT * FROM myvar v, membership_membership_line ml WHERE  ml.date_to BETWEEN v.startdatum and v.einddatum AND ml.membership_id IN (2,5,6,7,205,206,207,208)) ml ON ml.partner = p.id
+	--LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
+	--idem: versie voor jaarwisseling (januari voor vorige jaar)
+	LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.state = 'paid' AND ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
 	--land, straat, gemeente info
 	JOIN res_country c ON p.country_id = c.id
 	LEFT OUTER JOIN res_country_city_street ccs ON p.street_id = ccs.id
@@ -178,17 +176,19 @@ WHERE 	p.active = 't'
 	--overledenen niet
 	AND COALESCE(p.free_member,'f') = 'f'
 	--gratis leden niet
-	AND (ml.date_from BETWEEN v.startdatum and v.einddatum OR v.startdatum BETWEEN ml.date_from AND ml.date_to) AND ml.membership_id IN (2,5,6,7,205,206,207,208)
+	AND p.membership_state IN ('paid','invoiced') -- **** uitschakelen voor jaarovergang ****
+	--AND (ml.date_from BETWEEN v.startdatum and v.einddatum OR v.startdatum BETWEEN ml.date_from AND ml.date_to) AND ml.membership_id IN (2,5,6,7,205,206,207,208)
 	--enkel lidmaatschapsproduct lijnen met een einddatum in 2015
 	--AND p.membership_start < '2013-01-01' 
 	--lidmaatschap start voor 01/01/2013
-	AND (COALESCE(ml.date_cancel,'2099-12-31')) > now()::date
+	--AND NOT((COALESCE(ml.date_cancel,'2099-12-31')) > now()::date) -- AND ml.date_to < '2019-12-31') -- **** specifiek voor jaarovergang ****
 	--opzeggingen met een opzegdatum na vandaag (voor vandaag worden niet meegenomen)
-	AND (ml.state = 'paid'
+	--AND COALESCE(p.create_date::date,p.membership_start) < '2020-01-01'  -- **** specifiek voor jaarovergang ****
+	--AND (ml.state = 'paid'
 	-- betaald lidmaatschap
-		OR ((ml.state = 'invoiced' AND COALESCE(sm.sm_id,0) <> 0)
+	--	OR ((ml.state = 'invoiced' AND COALESCE(sm.sm_id,0) <> 0)
 	-- gefactureerd met domi
-				OR (ml.state = 'invoiced' AND COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )))
+	--			OR (ml.state = 'invoiced' AND COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )))
 	-- extra controle op startdatum van het lidmaatschap (enkel nodig bij jaarovergang om leden in het nieuwe jaar gecreëerd af te trekken van de "huidige toestand" van het vorige jaar)
 	--AND p.membership_start < '2017-01-01'
 	--bepaald ID
@@ -279,9 +279,9 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	COALESCE(p.phone_work,p.phone) telefoonnr,
 	p.mobile gsm,
 	COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
-	mo.name herkomst_lidmaatschap,
+	COALESCE(mo.name,'') herkomst_lidmaatschap,
 	p.membership_state huidige_lidmaatschap_status,
-	NULL::date lml_date_from,
+	--NULL::date lml_date_from,
 	COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
 	p.membership_start Lidmaatschap_startdatum, 
 	p.membership_stop Lidmaatschap_einddatum,  
@@ -326,7 +326,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	CASE WHEN login = 'apiuser' THEN 1 ELSE 0 END via_website,
 	CASE WHEN login <> 'apiuser' THEN 1 ELSE 0 END via_andere
 	--NULL as OGM
-FROM 	myvar v, res_partner p
+FROM 	_av_myvar v, res_partner p
 	--Voor de ontdubbeling veroorzaakt door meedere lidmaatschapslijnen
 	--LEFT OUTER JOIN (SELECT * FROM myvar v, membership_membership_line ml WHERE  ml.date_to BETWEEN v.startdatum and v.einddatum AND ml.membership_id IN (2,5,6,7,205,206,207,208)) ml ON ml.partner = p.id
 	--land, straat, gemeente info
