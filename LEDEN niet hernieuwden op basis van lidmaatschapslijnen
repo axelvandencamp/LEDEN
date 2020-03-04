@@ -5,11 +5,11 @@
 DROP TABLE IF EXISTS myvar;
 SELECT 
 	--'2016-12-31'::date AS cutoff_datum,
-	'2017-01-01'::date AS startdatum_vorigjaar,
-	'2017-12-31'::date AS einddatum_vorigjaar,
-	'2018-01-01'::date AS startdatum,
-	'2018-12-31'::date AS einddatum,  --naar volgend jaar verzetten vanaf 01/07
-	'248569'::numeric AS afdeling --(aartselaar 248646; hobokense polder 248569)
+	'2019-01-01'::date AS startdatum_vorigjaar,
+	'2019-12-31'::date AS einddatum_vorigjaar,
+	'2020-01-01'::date AS startdatum,
+	'2020-12-31'::date AS einddatum,  --naar volgend jaar verzetten vanaf 01/07
+	'248514'::numeric AS afdeling --(aartselaar 248646; hobokense polder 248569; gent vzw 248514)
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
 --------------------------------------------------------
@@ -30,6 +30,10 @@ CREATE TEMP TABLE temp_NietHernieuwden (
 	Provincie text,
 	Land text,
 	Email text,
+	/*street_id integer, --enkel nodig voor update stratenlijst dump gent
+	zip_id integer,
+	country_id integer,
+	crab_used boolean,*/
 	Aanmaakdatum date,
 	Startdatum date,
 	Einddatum date,
@@ -41,6 +45,9 @@ CREATE TEMP TABLE temp_NietHernieuwden (
 	Afdeling text,
 	Herkomst_lidmaatschap text,
 	Derde_betaler text,
+	wenst_geen_post_van_NP numeric,
+	wenst_geen_email_van_NP numeric,
+	nooit_contacteren text,
 	OGM text,
 	bedrag numeric,
 	product text);
@@ -78,9 +85,13 @@ INSERT INTO temp_NietHernieuwden (
 			WHEN NOT(p.country_id IN (21,166)) THEN 'Buitenland niet NL'
 			ELSE 'andere'
 		END AS provincie,
-		c.name land,
+		_crm_land(c.id) land,
 		COALESCE(p.email,p.email_work) email,
-		p.create_date::date,
+		/*p.street_id, --enkel nodig voor update stratenlijst dump gent
+		p.zip_id,
+		p.country_id,
+		p.crab_used,*/
+		COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
 		p.membership_start, 
 		p.membership_stop, 
 		p.membership_end, 
@@ -91,6 +102,13 @@ INSERT INTO temp_NietHernieuwden (
 		COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
 		mo.name herkomst_lidmaatschap,
 		p.third_payer_id,
+		CASE
+			WHEN COALESCE(p.opt_out_letter,'f') = 'f' THEN 0 ELSE 1
+		END wenst_geen_post_van_NP,
+		CASE
+			WHEN COALESCE(p.opt_out,'f') = 'f' THEN 0 ELSE 1
+		END wenst_geen_email_van_NP,
+		p.iets_te_verbergen nooit_contacteren,
 		NULL OGM,
 		NULL::numeric bedrag,
 		NULL product
@@ -156,3 +174,26 @@ SET lml_opgzegdatum = (SELECT ml.date_cancel
 			WHERE ml.id = nh.lidmaatschapslijn);
 ---------------------------------------
 SELECT * FROM  temp_NietHernieuwden nh;
+--=====================================
+--TEST
+/*
+SELECT * FROM  temp_NietHernieuwden nh WHERE partner_id = 268969
+
+SELECT ml.membership_id, ml.partner, ml.date_from, ml.date_to, * FROM membership_membership_line ml WHERE partner = 268969
+
+SELECT MAX(ml.id) id, ml.partner
+SELECT ml.id, ml.partner, ml.date_from, ml.date_to, ml.membership_id
+FROM myvar v, membership_membership_line ml --JOIN product_product pp ON pp.id = ml.membership_id
+WHERE  (ml.date_to BETWEEN v.startdatum and v.einddatum OR v.einddatum BETWEEN ml.date_from AND ml.date_to) 
+	AND pp.membership_product
+	AND ml.partner = 268969	
+GROUP BY ml.partner
+*/
+/*
+SELECT ml.id, i.number, i.reference, i.amount_total, pp.name_template
+	FROM membership_membership_line ml
+		JOIN account_invoice_line il ON ml.account_invoice_line = il.id 
+		JOIN account_invoice i ON i.id = il.invoice_id
+		JOIN product_product pp ON pp.id = il.product_id
+	WHERE ml.id IN (SELECT lidmaatschapslijn FROM temp_NietHernieuwden nh)
+*/
