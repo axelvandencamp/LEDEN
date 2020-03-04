@@ -82,7 +82,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		WHEN NOT(p.country_id IN (21,166)) THEN 'Buitenland niet NL'
 		ELSE 'andere'
 	END AS provincie,
-	c.name land,
+	_crm_land(c.id) land,
 	p.email,
 	--COALESCE(ml.id::text,'') ml_id,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
@@ -273,7 +273,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		WHEN NOT(p.country_id IN (21,166)) THEN 'Buitenland niet NL'
 		ELSE 'andere'
 	END AS provincie,
-	c.name land,
+	_crm_land(c.id) land,
 	p.email email,
 	--COALESCE(ml.id::text,'') ml_id,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
