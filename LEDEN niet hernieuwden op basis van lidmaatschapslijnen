@@ -1,6 +1,5 @@
 --------------------------------------------------------
--- aangemaakt: 02/03/2016
--- laatste aanpassing: 02/03/2016
+
 --------------------------------------------------------
 DROP TABLE IF EXISTS myvar;
 SELECT 
@@ -50,7 +49,8 @@ CREATE TEMP TABLE temp_NietHernieuwden (
 	nooit_contacteren text,
 	OGM text,
 	bedrag numeric,
-	product text);
+	product text,
+	type_digitaal text);
 --------------------------------------------------------
 INSERT INTO temp_NietHernieuwden (	
 	SELECT DISTINCT p.id,
@@ -111,7 +111,10 @@ INSERT INTO temp_NietHernieuwden (
 		p.iets_te_verbergen nooit_contacteren,
 		NULL OGM,
 		NULL::numeric bedrag,
-		NULL product
+		NULL product,
+		CASE WHEN COALESCE(p.no_magazine,'f') = 't' THEN 'geen magazine gewenst'
+			WHEN COALESCE(p.address_state_id,0) = 2 THEN 'adres verkeerd'
+			ELSE '' END type_digitaal
 	FROM	myvar v, res_partner p
 		JOIN
 		(
