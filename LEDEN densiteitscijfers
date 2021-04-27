@@ -1,58 +1,75 @@
 -- INHOUD --------------------------------------------------------------
 -- - aanmaak temptabel voor opladen bron gegevens huishoudens
 -- - lijst gemeenten per afdeling per land  (aanmaak temptabel + INSERT)
+-- VERSION CONTROL -----------------------------------------------------
+-- - 09/01/2019: densiteitscijfers per regionale toegevoegd
+-- - 04/02/2019: nav fusie gemeenten 01/01/2019 aanpassing:
+-- -		- "_AV_temp_aantallenpergemeente" enkel selectie actieve gemeenten
+-- -		- "Densiteit per gemeente": sommatie van de aantallen + groeperen op [refnis] (naam van gemeente)
 ------------------------------------------------------------------------
 --SET VARIABLES
 DROP TABLE IF EXISTS myvar;
 SELECT 
-	'2018-01-01'::date AS startdatum, 
-	'2019-12-31'::date AS einddatum
+	'2021-01-01'::date AS startdatum, 
+	'2022-12-31'::date AS einddatum,
+	2020 AS vorigjaar
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
 --====================================================================
 --====================================================================
 ----------------------------------------------------------------
 -- aanmaak temptabel voor opladen bron gegevens huishoudens
+-- - aantal per/gemeente vervangen door aantal/postcode
 ----------------------------------------------------------------
-DROP TABLE IF EXISTS _AV_temp_huishoudensvolgenstypepergemeente;
+/*DROP TABLE IF EXISTS _AV_temp_huishoudensvolgenstypepergemeente;
 
 CREATE TABLE _AV_temp_huishoudensvolgenstypepergemeente 
 (REFNIS_CODE NUMERIC, REFNIS	TEXT, TOTAAL	 NUMERIC, Totaal_private_huishoudens NUMERIC,	
  veld_e	 NUMERIC, veld_f NUMERIC, veld_g NUMERIC, veld_h NUMERIC, veld_i NUMERIC, veld_j NUMERIC, veld_k NUMERIC, veld_l NUMERIC
 );
 SELECT * FROM _AV_temp_huishoudensvolgenstypepergemeente ORDER BY refnis_code;
+------------
+--vaste tabel, niet telkens meer importeren, enkel bij jaarovergang de recente cijfers;
+-----
+DROP TABLE IF EXISTS marketing._m_so_huishoudensvolgenstypeperpostcode;
+
+CREATE TABLE marketing._m_so_huishoudensvolgenstypeperpostcode 
+(jaar NUMERIC, CD_ZIP_ NUMERIC, Totaal_huishoudens NUMERIC);
+
+SELECT * FROM marketing._m_so_huishoudensvolgenstypeperpostcode ORDER BY CD_ZIP_;
+*/
 ----------------------------------------------------------------
 -- data moet manueel geïmporteerd worden
 --====================================================================
 ---------------------------------------------------------------------
 -- temptabel voor omzetting gemeenten namen BELSTAT naar namen ERP
 ---------------------------------------------------------------------
-DROP TABLE IF EXISTS _AV_temp_omzettingstabelgemeenten;
+/*DROP TABLE IF EXISTS _AV_temp_omzettingstabelgemeenten;
 
 CREATE TABLE _AV_temp_omzettingstabelgemeenten 
 (REFNIS_CODE NUMERIC, REFNIS TEXT, ERP_gemeente TEXT, dummy TEXT, omzetting TEXT
 );
-SELECT * FROM _AV_temp_omzettingstabelgemeenten;
+SELECT * FROM _AV_temp_omzettingstabelgemeenten;*/
 ----------------------------------------------------------------
 -- data moet manueel geïmporteerd worden
 ---------------------------------------------------------------------------------------------------------------------
 -- UPDATE "_AV_temp_huishoudensvolgenstypepergemeente" met ERP gemeente namen ahv "_AV_temp_omzettingstabelgemeenten"
 ---------------------------------------------------------------------------------------------------------------------
-UPDATE _AV_temp_huishoudensvolgenstypepergemeente h
-SET refnis = (SELECT o.omzetting FROM _AV_temp_omzettingstabelgemeenten o WHERE o.refnis_code = h.refnis_code ) WHERE refnis_code IN (SELECT refnis_code FROM _AV_temp_omzettingstabelgemeenten)
+/*UPDATE _AV_temp_huishoudensvolgenstypepergemeente h
+SET refnis = (SELECT o.omzetting FROM _AV_temp_omzettingstabelgemeenten o WHERE o.refnis_code = h.refnis_code ) WHERE refnis_code IN (SELECT refnis_code FROM _AV_temp_omzettingstabelgemeenten)*/
 --====================================================================
 ---------------------------------------------------------------------
--- lijst gemeenten per afdeling per land (aanmaak temptabel + INSERT)
+-- lijst gemeenten per afdeling, regionale en land (aanmaak temptabel + INSERT)
 ---------------------------------------------------------------------
-DROP TABLE IF EXISTS _AV_temp_lijstgemeentenperafdeling;
+DROP TABLE IF EXISTS marketing._AV_temp_lijstgemeentenperafdeling;
 
-CREATE TABLE _AV_temp_lijstgemeentenperafdeling 
-(land TEXT, gemeente TEXT, postcode TEXT, id NUMERIC, partner_id NUMERIC, afdeling TEXT, provincie TEXT
+CREATE TABLE marketing._AV_temp_lijstgemeentenperafdeling 
+(land TEXT, gemeente TEXT, postcode TEXT, id NUMERIC, partner_id NUMERIC, afdeling TEXT, regionale TEXT, provincie TEXT
 );
-SELECT * FROM _AV_temp_lijstgemeentenperafdeling;
+SELECT * FROM marketing._AV_temp_lijstgemeentenperafdeling ORDER BY gemeente;
 
-INSERT INTO _AV_temp_lijstgemeentenperafdeling (
-	SELECT c.name land, cc.name gemeente, cc.zip postcode, cc.id, COALESCE(ocr.partner_id,0) partner_id, COALESCE(p.name,'') afdeling,
+INSERT INTO marketing._AV_temp_lijstgemeentenperafdeling (
+	SELECT c.name land, cc.name gemeente, cc.zip postcode, cc.id, COALESCE(ocr.partner_id,0) partner_id, COALESCE(p.name,'') afdeling, r.name regionale,
 		CASE
 			WHEN c.id = 21 AND substring(cc.zip from '[0-9]+')::numeric BETWEEN 1000 AND 1299 THEN 'Brussel' 
 			WHEN c.id = 21 AND (substring(cc.zip from '[0-9]+')::numeric BETWEEN 1500 AND 1999 OR substring(cc.zip from '[0-9]+')::numeric BETWEEN 3000 AND 3499) THEN 'Vlaams Brabant'
@@ -70,25 +87,26 @@ INSERT INTO _AV_temp_lijstgemeentenperafdeling (
 		LEFT OUTER JOIN res_organisation_city_rel ocr ON cc.id = ocr.zip_id
 		--JOIN res_country_city_street ccs ON cc.id = ccs.city_id
 		LEFT OUTER JOIN res_partner p ON p.id = ocr.partner_id
+		LEFT OUTER JOIN res_partner r ON p.partner_up_id = r.id
 	WHERE c.id = 21
 	);
 ---------------------------------------------------------------------	
-DROP TABLE IF EXISTS _AV_temp_aantallenpergemeente;
+DROP TABLE IF EXISTS marketing._AV_temp_aantallenpergemeente;
 
-CREATE TABLE _AV_temp_aantallenpergemeente 
-(ID NUMERIC, gemeente TEXT, postcode TEXT, provincie TEXT, afdeling TEXT, afdeling_eigen_keuze TEXT, land TEXT);
+CREATE TABLE marketing._AV_temp_aantallenpergemeente 
+(ID NUMERIC, gemeente TEXT, postcode NUMERIC, provincie TEXT, afdeling TEXT, afdeling_eigen_keuze TEXT, land TEXT);
 
-SELECT * FROM _AV_temp_aantallenpergemeente;
-
-INSERT INTO _AV_temp_aantallenpergemeente (
+SELECT * FROM marketing._AV_temp_aantallenpergemeente;
+-- INSERT of manueel opladen
+INSERT INTO marketing._AV_temp_aantallenpergemeente (
 	(SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		p.id database_id, 
 		CASE 
 			WHEN c.id = 21 THEN cc.name ELSE p.city 
 		END woonplaats,
 		CASE
-			WHEN c.id = 21 AND p.crab_used = 'true' THEN cc.zip
-			ELSE p.zip
+			WHEN c.id = 21 AND p.crab_used = 'true' THEN cc.zip::numeric
+			ELSE 0
 		END postcode,
 		CASE
 			WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 1000 AND 1299 THEN 'Brussel' 
@@ -124,7 +142,7 @@ INSERT INTO _AV_temp_aantallenpergemeente (
 		--parnter info
 		LEFT OUTER JOIN res_partner a3 ON i.partner_id = a3.id
 	--=============================================================================
-	WHERE 	p.active = 't'	
+	WHERE 	/*p.active = 't'	AND cc.active
 		--we tellen voor alle actieve leden
 		AND COALESCE(p.deceased,'f') = 'f' 
 		--overledenen niet
@@ -140,7 +158,15 @@ INSERT INTO _AV_temp_aantallenpergemeente (
 		-- betaald lidmaatschap
 			OR ((ml.state = 'invoiced' AND COALESCE(sm.sm_id,0) <> 0)
 		-- gefactureerd met domi
-					OR (ml.state = 'invoiced' AND COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )))				
+					OR (ml.state = 'invoiced' AND COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )))	*/	
+		p.active = 't'	
+		--we tellen voor alle actieve leden
+		AND COALESCE(p.deceased,'f') = 'f' 
+		--overledenen niet
+		AND COALESCE(p.free_member,'f') = 'f'
+		--gratis leden niet
+		AND p.membership_state IN ('paid','invoiced') -- **** uitschakelen voor jaarovergang ****
+		--AND p.membership_start < '2021-01-01' -- JAAROVERGANG		
 	--=============================================================================
 	--GRATIS LEDEN TOEVOEGEN
 	UNION ALL
@@ -151,8 +177,8 @@ INSERT INTO _AV_temp_aantallenpergemeente (
 			WHEN c.id = 21 THEN cc.name ELSE p.city 
 		END woonplaats,
 		CASE
-			WHEN c.id = 21 AND p.crab_used = 'true' THEN cc.zip
-			ELSE p.zip
+			WHEN c.id = 21 AND p.crab_used = 'true' THEN cc.zip::numeric
+			ELSE 0
 		END postcode,
 		CASE
 			WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 1000 AND 1299 THEN 'Brussel' 
@@ -194,176 +220,93 @@ INSERT INTO _AV_temp_aantallenpergemeente (
 		--wervende organisatie
 		LEFT OUTER JOIN res_partner p5 ON p.recruiting_organisation_id = p5.id
 	--=============================================================================
-	WHERE 	p.active = 't'	
+	WHERE 	p.active = 't'	AND cc.active
 		--we tellen voor alle actieve leden
 		AND COALESCE(p.deceased,'f') = 'f' 
 		--overledenen niet
 		AND COALESCE(p.free_member,'f') = 't'
-	));
+	));	
 -------------------------------------------------------------------------------
 -- Densiteit per gemeente
 -------------------------------------------------------------------------------
-SELECT gemeente, aantal_erp, aantal_huishoudens, (aantal_erp/aantal_huishoudens)*100 densiteit 
-FROM	(SELECT gemeente, COUNT(ID) aantal_erp FROM _AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY gemeente ORDER BY gemeente) erp
+SELECT postcode, gemeente, aantal_erp, aantal_huishoudens, (aantal_erp/aantal_huishoudens)*100 densiteit 
+FROM	(SELECT postcode, gemeente, COUNT(ID) aantal_erp FROM marketing._AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY postcode, gemeente ORDER BY postcode) erp
 	JOIN
-	(SELECT refnis, totaal_private_huishoudens aantal_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente ORDER BY refnis) bestat
-	ON erp.gemeente = bestat.refnis
+	(SELECT cd_zip_, SUM(totaal_huishoudens) aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2020 GROUP BY cd_zip_ ORDER BY cd_zip_) bestat
+	ON erp.postcode = bestat.cd_zip_
 -------------------------------------------------------------------------------
 -- Densiteit per provincie
 -------------------------------------------------------------------------------
 SELECT erp.provincie, SUM(erp.aantal_erp) aantal_erp, SUM(bestat.aantal_huishoudens) aantal_huishoudens, 
 	SUM(erp.aantal_erp)/SUM(bestat.aantal_huishoudens)*100 densiteit  
-FROM (SELECT gemeente, provincie, COUNT(ID) aantal_erp FROM _AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY gemeente, provincie ORDER BY gemeente) erp
+FROM (SELECT postcode, provincie, COUNT(ID) aantal_erp FROM marketing._AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY postcode, provincie ORDER BY postcode) erp
 	JOIN
-	(SELECT refnis, totaal_private_huishoudens aantal_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente ORDER BY refnis) bestat
-	ON erp.gemeente = bestat.refnis
+	(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2020 ORDER BY cd_zip_) bestat
+	ON erp.postcode = bestat.cd_zip_
 GROUP BY erp.provincie
--------------------------------------------------------------------------------
--- Densiteit per afdeling
--- - (voorlopig zonder correcties)
--------------------------------------------------------------------------------
-SELECT regdef.afdeling, SUM(erp.aantal_erp) aantal_erp, SUM(bestat.aantal_huishoudens) aantal_huishoudens, 
-	SUM(erp.aantal_erp)/SUM(bestat.aantal_huishoudens)*100 densiteit  
-FROM (SELECT gemeente, COUNT(ID) aantal_erp FROM _AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY gemeente ORDER BY gemeente) erp
-	JOIN
-	(SELECT refnis, totaal_private_huishoudens aantal_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente ORDER BY refnis) bestat
-	ON erp.gemeente = bestat.refnis
-	JOIN
-	(SELECT DISTINCT gemeente, partner_id, afdeling FROM _AV_temp_lijstgemeentenperafdeling ORDER BY gemeente) regdef
-	ON erp.gemeente = regdef.gemeente
-GROUP BY regdef.afdeling
-ORDER BY regdef.afdeling
 -------------------------------------------------------------------------------
 -- Densiteit per afdeling
 -- - met correcties
 -- - correcties voor Antwerpen 
---   SELECT DISTINCT gemeente, postcode FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen';
+--   SELECT DISTINCT gemeente, postcode FROM marketing._AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen';
 -------------------------------------------------------------------------------
 SELECT afdeling, aantal_erp, aantal_huishoudens, (aantal_erp/aantal_huishoudens)*100 densiteit
 FROM
 	(SELECT regdef.afdeling, 
-		SUM(erp.aantal_erp) ae_test,
-		CASE 
-			WHEN regdef.afdeling = 'Natuurpunt Dendermonding' THEN
-				SUM(erp.aantal_erp) + (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Scheldeland' AND afdeling_eigen_keuze LIKE 'Natuurpunt Dendermonding' AND postcode = '9290')
-						- (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Dendermonding' AND afdeling_eigen_keuze = 'Natuurpunt ''s Heerenbosch' AND postcode = '9200')
-			WHEN regdef.afdeling = 'Natuurpunt ''s Heerenbosch' THEN
-				SUM(erp.aantal_erp) + (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Dendermonding' AND afdeling_eigen_keuze = 'Natuurpunt ''s Heerenbosch' AND postcode = '9200')
-			WHEN regdef.afdeling = 'Natuurpunt Antwerpen Stad' THEN
-				SUM(erp.aantal_erp) + (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt Antwerpen Stad' AND postcode = '2140')
-						- ((SELECT COUNT(ID) FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.381))							
-			WHEN regdef.afdeling = 'Natuurpunt De Wielewaal' THEN
-				SUM(erp.aantal_erp) + (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt De Wielewaal' AND postcode = '2520')
-			WHEN regdef.afdeling = 'Natuurpunt Scheldeland' THEN
-				SUM(erp.aantal_erp) - (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Scheldeland' AND afdeling_eigen_keuze LIKE 'Natuurpunt Dendermonding' AND postcode = '9290')
-			WHEN regdef.afdeling = 'Natuurpunt Schijnbeemden' THEN
-				SUM(erp.aantal_erp) - (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt Antwerpen Stad' AND postcode = '2140')
-						- (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt De Wielewaal' AND postcode = '2520')
-						- ((SELECT COUNT(ID) FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.231))
-			WHEN regdef.afdeling = 'Natuurpunt Antwerpen Noord vzw' THEN
-				SUM(erp.aantal_erp) - ((SELECT COUNT(ID) FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.161))	
-			--WHEN regdef.afdeling = 'Natuurpunt Schijnbeemden' THEN
-			--	SUM(erp.aantal_erp) - ((SELECT COUNT(ID) FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.231))	
-			WHEN regdef.afdeling = 'Natuurpunt Wase Linkerscheldeoever' THEN
-				SUM(erp.aantal_erp) - ((SELECT COUNT(ID) FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.034))
-			WHEN regdef.afdeling = 'Natuurpunt Zuidrand Antwerpen' THEN
-				SUM(erp.aantal_erp) - ((SELECT COUNT(ID) FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.078))
-			WHEN regdef.afdeling = 'Natuurpunt Hobokense Polder vzw' THEN
-				SUM(erp.aantal_erp) - ((SELECT COUNT(ID) FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.135))						
-			ELSE SUM(erp.aantal_erp)
-		END aantal_erp, 
-		SUM(bestat.aantal_huishoudens) ah_test, 
-		CASE 
-			WHEN regdef.afdeling = 'Natuurpunt Dendermonding' THEN
-				SUM(bestat.aantal_huishoudens) + (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Scheldeland' AND afdeling_eigen_keuze LIKE 'Natuurpunt Dendermonding' AND postcode = '9290')
-						- (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Dendermonding' AND afdeling_eigen_keuze = 'Natuurpunt ''s Heerenbosch' AND postcode = '9200')
-			WHEN regdef.afdeling = 'Natuurpunt ''s Heerenbosch' THEN
-				SUM(bestat.aantal_huishoudens) + (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Dendermonding' AND afdeling_eigen_keuze = 'Natuurpunt ''s Heerenbosch' AND postcode = '9200')
-			WHEN regdef.afdeling = 'Natuurpunt Antwerpen Stad' THEN
-				SUM(bestat.aantal_huishoudens) + (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt Antwerpen Stad' AND postcode = '2140')
-						- ((SELECT totaal_private_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen')*(1-0.381))
-			WHEN regdef.afdeling = 'Natuurpunt De Wielewaal' THEN
-				SUM(bestat.aantal_huishoudens) + (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt De Wielewaal' AND postcode = '2520')
-			WHEN regdef.afdeling = 'Natuurpunt Scheldeland' THEN
-				SUM(bestat.aantal_huishoudens) - (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Scheldeland' AND afdeling_eigen_keuze LIKE 'Natuurpunt Dendermonding' AND postcode = '9290')
-			WHEN regdef.afdeling = 'Natuurpunt Schijnbeemden' THEN
-				SUM(bestat.aantal_huishoudens) - (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt Antwerpen Stad' AND postcode = '2140')
-						- (SELECT COUNT(ID) 
-							FROM _AV_temp_aantallenpergemeente 
-							WHERE afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt De Wielewaal' AND postcode = '2520')
-						- ((SELECT totaal_private_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen')*(1-0.231))
-			WHEN regdef.afdeling = 'Natuurpunt Antwerpen Noord vzw' THEN
-				SUM(bestat.aantal_huishoudens) - ((SELECT totaal_private_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen')*(1-0.161))	
-			--WHEN regdef.afdeling = 'Natuurpunt Schijnbeemden' THEN
-			--	SUM(bestat.aantal_huishoudens) - ((SELECT totaal_private_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen')*(1-0.231))	
-			WHEN regdef.afdeling = 'Natuurpunt Wase Linkerscheldeoever' THEN
-				SUM(bestat.aantal_huishoudens) - ((SELECT totaal_private_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen')*(1-0.034))
-			WHEN regdef.afdeling = 'Natuurpunt Zuidrand Antwerpen' THEN
-				SUM(bestat.aantal_huishoudens) - ((SELECT totaal_private_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen')*(1-0.078))
-			WHEN regdef.afdeling = 'Natuurpunt Hobokense Polder vzw' THEN
-				SUM(bestat.aantal_huishoudens) - ((SELECT totaal_private_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen')*(1-0.135))
-			ELSE SUM(bestat.aantal_huishoudens)
-		END aantal_huishoudens
+		SUM(erp.aantal_erp) aantal_erp, 
+		SUM(belstat.aantal_huishoudens) aantal_huishoudens
 		--SUM(erp.aantal_erp)/SUM(bestat.aantal_huishoudens)*100 densiteit  
-	FROM (SELECT gemeente, COUNT(ID) aantal_erp FROM _AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY gemeente ORDER BY gemeente) erp
+	FROM (SELECT postcode::numeric, COUNT(ID) aantal_erp FROM marketing._AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY postcode ORDER BY postcode) erp
 		JOIN
-		(SELECT refnis, totaal_private_huishoudens aantal_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente ORDER BY refnis) bestat
-		ON erp.gemeente = bestat.refnis
+		(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2020 ORDER BY cd_zip_) belstat
+		ON erp.postcode = belstat.cd_zip_
 		JOIN
-		(SELECT DISTINCT gemeente, partner_id, afdeling FROM _AV_temp_lijstgemeentenperafdeling ORDER BY gemeente) regdef
-		ON erp.gemeente = regdef.gemeente
+		(SELECT DISTINCT postcode::numeric, partner_id, afdeling FROM marketing._AV_temp_lijstgemeentenperafdeling ORDER BY postcode) regdef
+		ON erp.postcode::numeric = regdef.postcode
 	--WHERE regdef.afdeling IN ('Natuurpunt Dendermonding','Natuurpunt Scheldeland','Natuurpunt ''s Heerenbosch','Natuurpunt Antwerpen Stad','Natuurpunt De Wielewaal','Natuurpunt Schijnbeemden')
 	GROUP BY regdef.afdeling
 	ORDER BY regdef.afdeling) aantal
+-------------------------------------------------------------------------------
+-- Densiteit per Regionaal Samenwerkingsverband (Regionale)
+-- - zelfde logica als 'densiteit per afdeling' met zelfde correcties
+-- - enkel Group By aangepast naar 'GROUP BY regdef.regionale' (en daarvoor [regionale] toegevoegd aan SELECT van [regdef]
+-------------------------------------------------------------------------------
+SELECT regionale, SUM(aantal_erp) aantal_erp, SUM(aantal_huishoudens) aantal_huishoudens, (SUM(aantal_erp)/SUM(aantal_huishoudens))*100 densiteit
+FROM
+	(SELECT regdef.afdeling, regdef.regionale,
+		SUM(erp.aantal_erp) aantal_erp, 
+		SUM(belstat.aantal_huishoudens) aantal_huishoudens
+		--SUM(erp.aantal_erp)/SUM(bestat.aantal_huishoudens)*100 densiteit  
+	FROM (SELECT postcode::numeric, COUNT(ID) aantal_erp FROM marketing._AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY postcode ORDER BY postcode) erp
+		JOIN
+		(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2020 ORDER BY cd_zip_) belstat
+		ON erp.postcode = belstat.cd_zip_
+		JOIN
+		(SELECT DISTINCT postcode::numeric, partner_id, afdeling, regionale FROM marketing._AV_temp_lijstgemeentenperafdeling ORDER BY postcode) regdef
+		ON erp.postcode::numeric = regdef.postcode
+	--WHERE regdef.afdeling IN ('Natuurpunt Dendermonding','Natuurpunt Scheldeland','Natuurpunt ''s Heerenbosch','Natuurpunt Antwerpen Stad','Natuurpunt De Wielewaal','Natuurpunt Schijnbeemden')
+	GROUP BY regdef.afdeling, regdef.regionale
+	ORDER BY regdef.afdeling) aantal	
+GROUP BY regionale	
 --------------------------------------------------------------
 -- aantallen correctie ter referentie
 --------------------------------------------------------------
---/*
+/*
 SELECT COUNT(ID), afdeling, afdeling_eigen_keuze 
-FROM _AV_temp_aantallenpergemeente 
+FROM marketing._AV_temp_aantallenpergemeente 
 WHERE LOWER(afdeling) LIKE '%scheldeland' AND LOWER(afdeling_eigen_keuze) LIKE '%dendermonding' AND postcode = '9290' 
 	OR LOWER(afdeling) = 'natuurpunt dendermonding' AND LOWER(afdeling_eigen_keuze) = 'natuurpunt ''s heerenbosch' AND postcode = '9200' 
 	OR afdeling = 'Natuurpunt Schijnbeemden' AND afdeling_eigen_keuze = 'Natuurpunt Antwerpen Stad' AND postcode = '2140' 
 	OR LOWER(afdeling) = 'natuurpunt schijnbeemden' AND LOWER(afdeling_eigen_keuze) = 'natuurpunt de wielewaal' AND postcode = '2520' 
 GROUP BY afdeling, afdeling_eigen_keuze
---*/
+*/
 --------------------------------------------------------------
 -- Correcties Antwerpen
 --------------------------------------------------------------
---/*
+/*
 SELECT * FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen'
 
-SELECT ((SELECT COUNT(ID) FROM _AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.161)) x;
+SELECT ((SELECT COUNT(ID) FROM marketing._AV_temp_aantallenpergemeente WHERE gemeente = 'Antwerpen')*(1-0.161)) x;
 SELECT ((SELECT totaal_private_huishoudens FROM _AV_temp_huishoudensvolgenstypepergemeente WHERE refnis = 'Antwerpen')*(1-0.135)) x;
 Natuurpunt Antwerpen Noord vzw: 	0,161
 Natuurpunt Schijnbeemden: 		0,231
@@ -371,4 +314,4 @@ Natuurpunt Wase Linkerscheldeoever: 	0,034
 Natuurpunt Zuidrand Antwerpen:		0,078
 Natuurpunt Antwerpen Stad: 		0,381
 Natuurpunt Hobokense Polder vzw: 	0,135
---*/
+*/
