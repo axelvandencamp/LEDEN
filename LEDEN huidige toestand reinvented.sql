@@ -261,13 +261,16 @@ FROM _AV_temp_PARTNERIDs p
 GROUP BY p.partner_id, provincie, afdeling, herkomst_lidmaatschap, wervende_organisatie, datum
 
 SELECT DISTINCT COUNT(p.partner_id) partner_id
-SELECT *
+--SELECT *
 FROM _AV_temp_PARTNERIDs p
-	JOIN _AV_temp_dim_PARTNER pd ON pd.partner_id = p.partner_id
+	--JOIN _AV_temp_dim_PARTNER pd ON pd.partner_id = p.partner_id
 	JOIN _AV_temp_fact_PARTNER pf ON pf.partner_id = p.partner_id
-WHERE p.niet_hernieuwd > 0 AND p.lid > 0
+--WHERE p.lid = 1 AND p.gratis_lid = 1
+--WHERE p.lid = 1 AND p.gratis_lid = 0
+--WHERE p.lid = 1 AND p.nieuw = 1
+--WHERE p.niet_hernieuwd = 1 AND p.lid = 1
 --WHERE nieuw = 1 AND via_afdeling = 1
---WHERE p.lid = 1 AND pf.domi = 1
+WHERE p.lid = 1 AND pf.domi = 1
 --WHERE nieuw = 1 AND via_website = 1
 --WHERE nieuw = 1 AND via_website_pending = 1
 --WHERE nieuw = 1 AND via_andere = 1
