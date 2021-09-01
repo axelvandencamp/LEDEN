@@ -1,4 +1,4 @@
------------------------------------------
+﻿-----------------------------------------
 --
 -- Te gebruiken voor maandelijkse statistieken
 -- - leden per provincie
@@ -22,8 +22,8 @@ CREATE TEMP TABLE _AV_myvar
 	 ,afdeling NUMERIC, postcode TEXT, herkomst_lidmaatschap NUMERIC, wervende_organisatie NUMERIC, test_id NUMERIC
 	 );
 
-INSERT INTO _AV_myvar VALUES('2020-01-01',	--startdatum
-				'2021-12-31',	--einddatum
+INSERT INTO _AV_myvar VALUES('2021-01-01',	--startdatum
+				'2022-12-31',	--einddatum
 				248494, --afdeling 	
 				'2260', --postcode
 				494,  	--numeric 
@@ -83,6 +83,13 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		ELSE 'andere'
 	END AS provincie,
 	_crm_land(c.id) land,
+	CASE
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN
+			c.id + cc.id + ccs.id 
+				+ COALESCE(NULLIF(regexp_replace(p.street_nbr, '\D','','g'),'')::numeric,0) 
+				+ COALESCE(NULLIF(regexp_replace(p.street_bus, '\D','','g'),'')::numeric,0) 
+		ELSE p.id 
+	END adres_id,
 	p.email,
 	--COALESCE(ml.id::text,'') ml_id,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
@@ -90,15 +97,23 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
 	COALESCE(mo.name,'') herkomst_lidmaatschap,
 	p.membership_state huidige_lidmaatschap_status,
-	COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
+	COALESCE(p.membership_start,p.create_date::date) aanmaak_datum,
 	--ml.date_from lml_date_from,
-	p.membership_start Lidmaatschap_startdatum, 
+		p.membership_start Lidmaatschap_startdatum, 
 	p.membership_stop Lidmaatschap_einddatum,  
 	p.membership_pay_date betaaldatum,
 	p.membership_renewal_date hernieuwingsdatum,
 	p.membership_end recentste_einddatum_lidmaatschap,
 	p.membership_cancel membership_cancel,
 	_crm_opzegdatum_membership(p.id) opzegdatum_LML,
+	CASE	--SELECT * FROM res_partner_corporation_type
+			WHEN p.organisation_type_id IN (1,3,5,7,8,16) THEN 'Intern'
+			WHEN p.corporation_type_id BETWEEN 1 AND 12 THEN 'Vennootschap'
+			WHEN p.corporation_type_id = 13 THEN 'Publiekrechterlijk'
+			WHEN p.corporation_type_id IN (15,16) THEN 'Stichting'
+			WHEN p.corporation_type_id = 17 THEN 'Vereniging'
+			ELSE 'Private persoon'
+	END rechtspersoon,
 	p.active,
 	p2.name wervend_lid,
 	p2.membership_nbr wl_lidnummer,
@@ -137,9 +152,9 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	--COALESCE(i.reference,'') OGM	--voor ledencijfers OGM code niet meegeven; geeft verdubbelingen
 FROM 	_av_myvar v, res_partner p
 	--Voor de ontdubbeling veroorzaakt door meedere lidmaatschapslijnen
-	--LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
+	LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
 	--idem: versie voor jaarwisseling (januari voor vorige jaar)
-	LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.state = 'paid' AND ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
+	--LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.state = 'paid' AND ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
 	--land, straat, gemeente info
 	JOIN res_country c ON p.country_id = c.id
 	LEFT OUTER JOIN res_country_city_street ccs ON p.street_id = ccs.id
@@ -177,9 +192,9 @@ WHERE 	p.active = 't'
 	AND COALESCE(p.free_member,'f') = 'f'
 	--gratis leden niet
 	AND p.membership_state IN ('paid','invoiced') -- **** uitschakelen voor jaarovergang ****
+	--AND p.membership_start < '2021-01-01' -- JAAROVERGANG
 	--AND (ml.date_from BETWEEN v.startdatum and v.einddatum OR v.startdatum BETWEEN ml.date_from AND ml.date_to) AND ml.membership_id IN (2,5,6,7,205,206,207,208)
 	--enkel lidmaatschapsproduct lijnen met een einddatum in 2015
-	--AND p.membership_start < '2013-01-01' 
 	--lidmaatschap start voor 01/01/2013
 	--AND NOT((COALESCE(ml.date_cancel,'2099-12-31')) > now()::date) -- AND ml.date_to < '2019-12-31') -- **** specifiek voor jaarovergang ****
 	--opzeggingen met een opzegdatum na vandaag (voor vandaag worden niet meegenomen)
@@ -274,6 +289,13 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		ELSE 'andere'
 	END AS provincie,
 	_crm_land(c.id) land,
+	CASE
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN
+			c.id + cc.id + ccs.id 
+				+ COALESCE(NULLIF(regexp_replace(p.street_nbr, '\D','','g'),'')::numeric,0) 
+				+ COALESCE(NULLIF(regexp_replace(p.street_bus, '\D','','g'),'')::numeric,0) 
+		ELSE p.id 
+	END adres_id,
 	p.email email,
 	--COALESCE(ml.id::text,'') ml_id,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
@@ -290,6 +312,14 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p.membership_end recentste_einddatum_lidmaatschap,
 	p.membership_cancel membership_cancel,
 	_crm_opzegdatum_membership(p.id) opzegdatum_LML,
+	CASE	--SELECT * FROM res_partner_corporation_type
+			WHEN p.organisation_type_id IN (1,3,5,7,8,16) THEN 'Intern'
+			WHEN p.corporation_type_id BETWEEN 1 AND 12 THEN 'Vennootschap'
+			WHEN p.corporation_type_id = 13 THEN 'Publiekrechterlijk'
+			WHEN p.corporation_type_id IN (15,16) THEN 'Stichting'
+			WHEN p.corporation_type_id = 17 THEN 'Vereniging'
+			ELSE 'Private persoon'
+	END rechtspersoon,
 	p.active,
 	p2.name wervend_lid,
 	p2.membership_nbr wl_lidnummer,
