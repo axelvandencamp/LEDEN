@@ -3,8 +3,8 @@
  --SET VARIABLES
 DROP TABLE IF EXISTS myvar;
 SELECT 
-	'2017-01-01'::date AS startdatum 
-	,'2018-12-31'::date AS einddatum  --vanaf 01/07 lid tot einde volgend jaar
+	'2021-01-01'::date AS startdatum 
+	,'2021-12-31'::date AS einddatum  --vanaf 01/07 lid tot einde volgend jaar
 	,'2017-02-01'::date AS cutoffdate --te gebruiken bij jaarovergang om nieuwe leden nieuwe jaar af te trekken van tellen voorbije jaar
 	,'1999-01-01'::date AS basedatum
 	,'102324'::numeric AS ledenaantal_vorigjaar --eind 2015 
