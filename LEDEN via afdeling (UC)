@@ -1,0 +1,61 @@
+
+--------------------------------
+-- boeking met lid + afdeling
+--------------------------------
+SELECT am.id am_id, am.name am_name, aml1.id aml1_id, aml1.credit, aml1.debit, aml1.account_id, aml1.name, COALESCE(aml1.reconcile_id,0) aml1_reconcile_id, aml2.move_id
+	, i.id, i.number, i.commercial_partner_id, p2.name, i.membership_partner_id
+	, p1.first_name, p1.last_name
+FROM account_move am
+	LEFT OUTER JOIN account_move_line aml1 ON aml1.move_id = am.id
+	LEFT OUTER JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id
+	LEFT OUTER JOIN account_invoice i ON i.move_id = aml2.move_id
+	LEFT OUTER JOIN res_partner p1 ON p1.id = i.membership_partner_id
+	LEFT OUTER JOIN res_partner p2 ON p2.id = i.commercial_partner_id
+--WHERE am.company_id = 5 AND i.commercial_partner_id = 248617 AND i.date_invoice BETWEEN '2020-04-01' AND '2020-04-30'
+WHERE am.company_id = 5 AND am.name = '20-029-115/000002'
+
+--------------------------------
+-- enkel boeking met lid
+-- - makkelijkst met nr boeking
+--------------------------------
+SELECT am.id am_id, am.name am_name
+	, aml1.id aml1_id, aml1.credit, aml1.debit, aml1.account_id, aa.name, aml1.name, COALESCE(aml1.reconcile_id,0) aml1_reconcile_id, aml2.move_id
+	, i.id, i.number, i.date_invoice, aml1.last_rec_date, i.commercial_partner_id, p2.name, i.membership_partner_id
+	, p1.first_name, p1.last_name
+FROM account_move am
+	JOIN account_move_line aml1 ON aml1.move_id = am.id
+	JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id
+	JOIN account_invoice i ON i.move_id = aml2.move_id
+	JOIN account_account aa ON aa.id = i.account_id
+	JOIN res_partner p1 ON p1.id = i.membership_partner_id
+	JOIN res_partner p2 ON p2.id = i.commercial_partner_id
+WHERE am.name IN ('21-029-001/000004','21-029-001/000007')
+/*WHERE am.company_id = 5 AND i.date_invoice BETWEEN '2020-09-01' AND '2020-09-30' --AND am.name = '20-029-115/000002'
+	AND i.commercial_partner_id = 248617
+	AND NOT(i.commercial_partner_id = i.membership_partner_id)*/
+ORDER BY i.date_invoice, am.name	
+	
+-------------------------------------------------
+-- TESTEN
+-------------------------------------------------
+
+SELECT * FROM account_invoice i WHERE i.commercial_partner_id = 248617 LIMIT 10
+SELECT * FROM account_invoice WHERE number = 'B-LID20-014269' LIMIT 10
+
+SELECT * FROM account_move_line aml WHERE aml.move_id = 2575031 LIMIT 10
+SELECT * FROM account_move_line aml WHERE aml.reconcile_id = 1229772 LIMIT 10
+SELECT * FROM account_move am WHERE am.name = '20-029-115/000002' LIMIT 10
+SELECT * FROM account_move am WHERE am.id = 2566268 LIMIT 10
+SELECT * FROM account_account aa WHERE aa.id = 4114
+
+SELECT /*i.id i_id, i.number i_number,*/ am.id am_id, am.name am_name, aml1.id aml1_id/*, aml2.id aml2_id*/, aml1.* --, aml2.*
+--FROM account_invoice i
+FROM account_move am 
+	--JOIN account_move am ON am.id = i.move_id
+	RIGHT OUTER JOIN account_move_line aml1 ON aml1.move_id = am.id
+	JOIN account_move_line aml2 ON aml2.reconcile_id = aml1.reconcile_id
+	--JOIN account_invoice i ON i.move_id = aml1.move_id
+--WHERE i.commercial_partner_id = 248617
+--WHERE i.number = 'B-LID20-014269'
+WHERE am.company_id = 5 AND am.name = '20-029-115/000002'
+LIMIT 10
