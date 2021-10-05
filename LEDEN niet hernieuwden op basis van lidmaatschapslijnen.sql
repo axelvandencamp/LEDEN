@@ -1,0 +1,205 @@
+﻿--------------------------------------------------------
+-- aangemaakt: 02/03/2016
+-- laatste aanpassing: 02/03/2016
+--------------------------------------------------------
+DROP TABLE IF EXISTS myvar;
+SELECT 
+	--'2016-12-31'::date AS cutoff_datum,
+	'2020-01-01'::date AS startdatum_vorigjaar,
+	'2020-12-31'::date AS einddatum_vorigjaar,
+	'2021-01-01'::date AS startdatum,
+	'2021-12-31'::date AS einddatum,  --naar volgend jaar verzetten vanaf 01/07
+	'248514'::numeric AS afdeling --(aartselaar 248646; hobokense polder 248569; gent vzw 248514)
+INTO TEMP TABLE myvar;
+SELECT * FROM myvar;
+--------------------------------------------------------
+--CREATE TEMP TABLE
+DROP TABLE IF EXISTS temp_NietHernieuwden;
+
+CREATE TEMP TABLE temp_NietHernieuwden (
+	Partner_id numeric,
+	Lidnummer text,
+	Lidmaatschapslijn integer,
+	Aanschrijving text,
+	Voornaam text,
+	Naam text,
+	Straat text,
+	Huisnummer text,
+	Bus text,
+	Postcode text,
+	Woonplaats text,
+	Provincie text,
+	Land text,
+	Email text,
+	/*street_id integer, --enkel nodig voor update stratenlijst dump gent
+	zip_id integer,
+	country_id integer,
+	crab_used boolean,*/
+	Aanmaakdatum date,
+	Startdatum date,
+	Einddatum date,
+	Recentste_einddatum date,
+	Betaal_datum date,
+	Opzegdatum date,
+	lml_opgzegdatum date,
+	Lidmaatschap_status text,
+	Afdeling text,
+	Herkomst_lidmaatschap text,
+	Derde_betaler text,
+	wenst_geen_post_van_NP numeric,
+	wenst_geen_email_van_NP numeric,
+	nooit_contacteren text,
+	OGM text,
+	bedrag numeric,
+	product text,
+	type_digitaal text);
+--------------------------------------------------------
+INSERT INTO temp_NietHernieuwden (	
+	SELECT DISTINCT p.id,
+		p.membership_nbr lidnummer,
+		ml2.id,
+		COALESCE(p.first_name,'natuurliefhebber') aanschrijving,
+		p.first_name as voornaam,
+		p.last_name as achternaam,
+		CASE
+			WHEN c.id = 21 AND p.crab_used = 'true' THEN ccs.name
+			ELSE p.street
+		END straat,
+		CASE
+			WHEN c.id = 21 AND p.crab_used = 'true' THEN p.street_nbr ELSE ''
+		END huisnummer, 
+		p.street_bus bus,
+		CASE
+			WHEN c.id = 21 AND p.crab_used = 'true' THEN cc.zip
+			ELSE p.zip
+		END zip,
+		CASE 
+			WHEN c.id = 21 THEN cc.name ELSE p.city 
+		END gemeente,
+		CASE
+			WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 1000 AND 1299 THEN 'Brussel' 
+			WHEN p.country_id = 21 AND (substring(p.zip from '[0-9]+')::numeric BETWEEN 1500 AND 1999 OR substring(p.zip from '[0-9]+')::numeric BETWEEN 3000 AND 3499) THEN 'Vlaams Brabant'
+			WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 2000 AND 2999  THEN 'Antwerpen' 
+			WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 3500 AND 3999  THEN 'Limburg' 
+			WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 8000 AND 8999  THEN 'West-Vlaanderen' 
+			WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 9000 AND 9999  THEN 'Oost-Vlaanderen' 
+			WHEN p.country_id = 21 THEN 'Wallonië'
+			WHEN p.country_id = 166 THEN 'Nederland'
+			WHEN NOT(p.country_id IN (21,166)) THEN 'Buitenland niet NL'
+			ELSE 'andere'
+		END AS provincie,
+		_crm_land(c.id) land,
+		COALESCE(p.email,p.email_work) email,
+		/*p.street_id, --enkel nodig voor update stratenlijst dump gent
+		p.zip_id,
+		p.country_id,
+		p.crab_used,*/
+		COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
+		p.membership_start, 
+		p.membership_stop, 
+		p.membership_end, 
+		p.membership_pay_date, 
+		p.membership_cancel,
+		NULL::date lml_opgzegdatum,
+		p.membership_state,
+		COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
+		mo.name herkomst_lidmaatschap,
+		p.third_payer_id,
+		CASE
+			WHEN COALESCE(p.opt_out_letter,'f') = 'f' THEN 0 ELSE 1
+		END wenst_geen_post_van_NP,
+		CASE
+			WHEN COALESCE(p.opt_out,'f') = 'f' THEN 0 ELSE 1
+		END wenst_geen_email_van_NP,
+		p.iets_te_verbergen nooit_contacteren,
+		NULL OGM,
+		NULL::numeric bedrag,
+		NULL product,
+		CASE WHEN COALESCE(p.no_magazine,'f') = 't' THEN 'geen magazine gewenst'
+			WHEN COALESCE(p.address_state_id,0) = 2 THEN 'adres verkeerd'
+			ELSE '' END type_digitaal
+	FROM	myvar v, res_partner p
+		JOIN
+		(
+			SELECT * 
+			FROM myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id
+			WHERE  (ml.date_to BETWEEN v.startdatum_vorigjaar and v.einddatum_vorigjaar OR v.einddatum_vorigjaar BETWEEN ml.date_from AND ml.date_to) 
+				AND pp.membership_product
+		) ml1 ON ml1.partner = p.id
+		LEFT OUTER JOIN
+		(
+			SELECT MAX(ml.id) id, ml.partner 
+			FROM myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id
+			WHERE  (ml.date_to BETWEEN v.startdatum and v.einddatum OR v.einddatum BETWEEN ml.date_from AND ml.date_to) 
+				AND pp.membership_product
+			GROUP BY ml.partner
+		) ml2 ON ml2.partner = ml1.partner
+
+		
+		--land, straat, gemeente info
+		JOIN res_country c ON p.country_id = c.id
+		LEFT OUTER JOIN res_country_city_street ccs ON p.street_id = ccs.id
+		LEFT OUTER JOIN res_country_city cc ON p.zip_id = cc.id
+		--herkomst lidmaatschap
+		LEFT OUTER JOIN res_partner_membership_origin mo ON p.membership_origin_id = mo.id
+		--afdeling vs afdeling eigen keuze
+		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
+		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+	WHERE p.active AND COALESCE(p.deceased,'f') = 'f'
+		AND p.membership_state = 'wait_member'
+		--AND COALESCE(a2.id,a.id) = v.afdeling
+	);
+--OGM toevoegen
+UPDATE temp_NietHernieuwden nh
+SET OGM = (SELECT i.reference 
+		FROM membership_membership_line ml 
+			JOIN account_invoice_line il ON ml.account_invoice_line = il.id 
+			JOIN account_invoice i ON i.id = il.invoice_id
+			JOIN product_product pp ON pp.id = il.product_id
+		WHERE nh.lidmaatschapslijn = ml.id);
+--bedrag toeveogen
+UPDATE temp_NietHernieuwden nh
+SET bedrag = (SELECT i.amount_total 
+		FROM membership_membership_line ml 
+			JOIN account_invoice_line il ON ml.account_invoice_line = il.id 
+			JOIN account_invoice i ON i.id = il.invoice_id
+			JOIN product_product pp ON pp.id = il.product_id
+		WHERE nh.lidmaatschapslijn = ml.id);
+--product toevoegen
+UPDATE temp_NietHernieuwden nh
+SET product = (SELECT pp.name_template 
+		FROM membership_membership_line ml 
+			JOIN account_invoice_line il ON ml.account_invoice_line = il.id 
+			JOIN account_invoice i ON i.id = il.invoice_id
+			JOIN product_product pp ON pp.id = il.product_id
+		WHERE nh.lidmaatschapslijn = ml.id);
+--lidmaatschapslijn opzegdatum toevoegen
+UPDATE temp_NietHernieuwden nh
+SET lml_opgzegdatum = (SELECT ml.date_cancel
+			FROM membership_membership_line ml
+			WHERE ml.id = nh.lidmaatschapslijn);
+---------------------------------------
+SELECT * /*count(partner_id)*/ FROM  temp_NietHernieuwden nh;
+--=====================================
+--TEST
+/*
+SELECT * FROM  temp_NietHernieuwden nh WHERE partner_id = 268969
+
+SELECT ml.membership_id, ml.partner, ml.date_from, ml.date_to, * FROM membership_membership_line ml WHERE partner = 268969
+
+SELECT MAX(ml.id) id, ml.partner
+SELECT ml.id, ml.partner, ml.date_from, ml.date_to, ml.membership_id
+FROM myvar v, membership_membership_line ml --JOIN product_product pp ON pp.id = ml.membership_id
+WHERE  (ml.date_to BETWEEN v.startdatum and v.einddatum OR v.einddatum BETWEEN ml.date_from AND ml.date_to) 
+	AND pp.membership_product
+	AND ml.partner = 268969	
+GROUP BY ml.partner
+*/
+/*
+SELECT ml.id, i.number, i.reference, i.amount_total, pp.name_template
+	FROM membership_membership_line ml
+		JOIN account_invoice_line il ON ml.account_invoice_line = il.id 
+		JOIN account_invoice i ON i.id = il.invoice_id
+		JOIN product_product pp ON pp.id = il.product_id
+	WHERE ml.id IN (SELECT lidmaatschapslijn FROM temp_NietHernieuwden nh)
+*/
