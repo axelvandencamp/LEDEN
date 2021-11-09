@@ -31,6 +31,9 @@ CREATE TEMP TABLE temp_NietHernieuwden (
 	Provincie text,
 	Land text,
 	Email text,
+	email_werk text, --enkel voor belactie
+	telefoonnr text, --enkel voor belactie
+	gsm text, --enkel voor belactie
 	/*street_id integer, --enkel nodig voor update stratenlijst dump gent
 	zip_id integer,
 	country_id integer,
@@ -89,7 +92,29 @@ INSERT INTO temp_NietHernieuwden (
 			ELSE 'andere'
 		END AS provincie,
 		_crm_land(c.id) land,
-		COALESCE(p.email,p.email_work) email,
+		COALESCE(p.email,p.email_work) email, -- in comment voor belactie
+		/* enkel voor belactie
+		p.email,
+		p.email_work,
+		--COALESCE(p.phone_work,p.phone) telefoonnr,
+		CASE
+			WHEN substr(COALESCE(p.phone_work,p.phone),1,2) = '00' THEN '+'||regexp_replace(substr(COALESCE(p.phone_work,p.phone),3,length(COALESCE(p.phone_work,p.phone))), '[^0-9]+', '', 'g')
+			WHEN substr(COALESCE(p.phone_work,p.phone),1,3) = '+32' THEN '+'||regexp_replace(COALESCE(p.phone_work,p.phone), '[^0-9]+', '', 'g')
+			WHEN substr(COALESCE(p.phone_work,p.phone),1,1) = '0' THEN '+32'||regexp_replace(substr(COALESCE(p.phone_work,p.phone),2,length(COALESCE(p.phone_work,p.phone))), '[^0-9]+', '', 'g')
+			WHEN LENGTH(regexp_replace(COALESCE(p.phone_work,p.phone), '[^0-9]+', '', 'g')) > 10 THEN '+'||regexp_replace(COALESCE(p.phone_work,p.phone), '[^0-9]+', '', 'g')
+			WHEN LENGTH(COALESCE(p.phone_work,p.phone)) > 0 THEN '+32'||regexp_replace(COALESCE(p.phone_work,p.phone), '[^0-9]+', '', 'g')
+			ELSE COALESCE(p.phone_work,p.phone)
+		END telefoonnr,
+		CASE
+			WHEN substr(p.mobile,1,2) = '00' THEN '+'||regexp_replace(substr(p.mobile,3,length(p.mobile)), '[^0-9]+', '', 'g')
+			WHEN substr(p.mobile,1,3) = '+32' THEN '+'||regexp_replace(p.mobile, '[^0-9]+', '', 'g')
+			WHEN substr(p.mobile,1,1) = '0' THEN '+32'||regexp_replace(substr(p.mobile,2,length(p.mobile)), '[^0-9]+', '', 'g')
+			WHEN LENGTH(regexp_replace(p.mobile, '[^0-9]+', '', 'g')) > 10 THEN '+'||regexp_replace(p.mobile, '[^0-9]+', '', 'g')
+			WHEN LENGTH(p.mobile) > 0 THEN '+32'||regexp_replace(p.mobile, '[^0-9]+', '', 'g')
+			ELSE p.mobile
+		END  gsm,
+		--p.mobile gsm,
+		*/
 		/*p.street_id, --enkel nodig voor update stratenlijst dump gent
 		p.zip_id,
 		p.country_id,
