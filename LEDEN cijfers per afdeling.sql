@@ -30,7 +30,8 @@ CREATE TABLE marketing._m_so_aantalperAfdperJaar
 --!!!! MANUEEL OPLADEN (delimiter "|")!!!!--
 --"S:\Ledenadministratie\Databeheer\Upld\LEDEN per afdeling 2020.csv (YYYY-1)"
 				
-SELECT * FROM marketing._m_so_aantalperAfdperJaar;
+SELECT * FROM marketing._m_so_aantalperAfdperJaar ORDER BY afdeling;
+INSERT INTO marketing._m_so_aantalperAfdperJaar VALUES(2020,355934,'Natuurpunt Laakdal',0);
 */
 --====================================================================
 --CREATE TMP TABLE
@@ -39,25 +40,40 @@ DROP TABLE IF EXISTS marketing._AV_temp_LEDENcijfersperafdeling;
 CREATE TABLE marketing._AV_temp_LEDENcijfersperafdeling 
 	(afd_id INTEGER, afdeling TEXT, "aantal_Y-1" NUMERIC, uitval NUMERIC, uitval_perc NUMERIC, nieuwe_leden NUMERIC, aantal_leden NUMERIC, groei NUMERIC, leden_aangebracht NUMERIC);
 
-SELECT * FROM marketing._AV_temp_LEDENcijfersperafdeling;
+SELECT * FROM marketing._AV_temp_LEDENcijfersperafdeling ORDER BY afdeling;
 --*/
 --====================================================================
---Uitval + % Uitval
--------------------
-INSERT INTO marketing._AV_temp_LEDENcijfersperafdeling
-	(SELECT COALESCE(a2.id,a.id) afd_id, COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling, 
-		afd.aantal,
-		COUNT(DISTINCT p.id) uitval,
-		COUNT(DISTINCT p.id)/afd.aantal uitval_perc,
-		0, 0, 0, 0
+-- Huidig aantal leden
+----------------------
+INSERT INTO marketing._AV_temp_LEDENcijfersperafdeling 
+	(SELECT COALESCE(a2.id,a.id) afd_id, COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
+	 	0,0,0,0,COUNT(DISTINCT p.id) aantal, 0,0
 	FROM _AV_myvar v, res_partner p
 		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
-		LEFT OUTER JOIN marketing._m_so_aantalperAfdperJaar afd ON afd.id = COALESCE(a2.id,a.id)
+	WHERE p.active AND p.membership_state IN ('paid','invoiced','free')
+		--AND p.membership_start < '2021-01-01' --JAAROVERGANG
+		--AND p.membership_start >= v.startdatum
+		--AND COALESCE(a2.id,a.id) = 248516
+	GROUP BY COALESCE(a2.id,a.id), COALESCE(COALESCE(a2.name,a.name),'onbekend'));
+--====================================================================
+--Uitval + % Uitval
+-------------------
+UPDATE marketing._AV_temp_LEDENcijfersperafdeling T1
+SET "aantal_Y-1" = SQ1.aantal, uitval = SQ1.uitval, uitval_perc = SQ1.uitval_perc
+FROM (SELECT COALESCE(a2.id,a.id) afd_id,  
+		afd.aantal,
+		COUNT(DISTINCT p.id) uitval,
+		COUNT(DISTINCT p.id)/afd.aantal uitval_perc
+	FROM _AV_myvar v, res_partner p
+		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
+		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+		LEFT OUTER JOIN marketing._m_so_aantalperAfdperJaar afd ON afd.id = COALESCE(a2.id,a.id) AND afd.aantal <> 0
 	WHERE afd.jaar = v.vorigjaar
 		AND p.membership_end = (v.startdatum + INTERVAL 'day -1')::date
 		AND p.membership_state <> 'canceled'
-	GROUP BY COALESCE(a2.id,a.id), COALESCE(COALESCE(a2.name,a.name),'onbekend'), afd.aantal);
+	GROUP BY COALESCE(a2.id,a.id), afd.aantal) SQ1
+WHERE T1.afd_id = SQ1.afd_id;
 --====================================================================
 -- Nieuwe leden
 ---------------
@@ -72,21 +88,7 @@ FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(a2.id,a.id) afd_id
 		--AND p.membership_start < '2021-01-01' --JAAROVERGANG
 	GROUP BY COALESCE(a2.id,a.id)) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
---====================================================================
--- Huidig aantal leden
-----------------------
-UPDATE marketing._AV_temp_LEDENcijfersperafdeling T1
-SET "aantal_leden" = SQ1.aantal
-FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(a2.id,a.id) afd_id
-	FROM _AV_myvar v, res_partner p
-		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
-		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
-	WHERE p.active AND p.membership_state IN ('paid','invoiced','free')
-		--AND p.membership_start < '2021-01-01' --JAAROVERGANG
-		--AND p.membership_start >= v.startdatum
-		--AND COALESCE(a2.id,a.id) = 248516
-	GROUP BY COALESCE(a2.id,a.id)) SQ1
-WHERE T1.afd_id = SQ1.afd_id;
+
 --====================================================================
 -- groei aantal leden
 ---------------------
@@ -109,4 +111,4 @@ FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(p.recruiting_organisation_id,
 	GROUP BY p.recruiting_organisation_id) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 --====================================================================
-SELECT * FROM marketing._AV_temp_LEDENcijfersperafdeling;
+SELECT * FROM marketing._AV_temp_LEDENcijfersperafdeling ORDER BY afdeling;
