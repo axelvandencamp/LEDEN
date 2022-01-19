@@ -31,9 +31,9 @@ CREATE TEMP TABLE temp_NietHernieuwden (
 	Provincie text,
 	Land text,
 	Email text,
-	email_werk text, --enkel voor belactie
-	telefoonnr text, --enkel voor belactie
-	gsm text, --enkel voor belactie
+	--email_werk text, --enkel voor belactie
+	--telefoonnr text, --enkel voor belactie
+	--gsm text, --enkel voor belactie
 	/*street_id integer, --enkel nodig voor update stratenlijst dump gent
 	zip_id integer,
 	country_id integer,
@@ -140,9 +140,12 @@ INSERT INTO temp_NietHernieuwden (
 		NULL OGM,
 		NULL::numeric bedrag,
 		NULL product,
+		CASE WHEN COALESCE(p.opt_out_letter,'f') = 't' THEN 'geen post gewenst'
+			WHEN COALESCE(p.address_state_id,0) = 2 THEN 'adres verkeerd'
+			ELSE '' END type_digitaal_post,
 		CASE WHEN COALESCE(p.no_magazine,'f') = 't' THEN 'geen magazine gewenst'
 			WHEN COALESCE(p.address_state_id,0) = 2 THEN 'adres verkeerd'
-			ELSE '' END type_digitaal
+			ELSE '' END type_digitaal_NPblad
 	FROM	myvar v, res_partner p
 		JOIN
 		(
