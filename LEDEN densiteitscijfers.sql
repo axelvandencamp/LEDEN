@@ -10,9 +10,9 @@
 --SET VARIABLES
 DROP TABLE IF EXISTS myvar;
 SELECT 
-	'2021-01-01'::date AS startdatum, 
-	'2022-12-31'::date AS einddatum,
-	2020 AS vorigjaar
+	'2022-01-01'::date AS startdatum, 
+	'2023-12-31'::date AS einddatum,
+	2021 AS vorigjaar
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
 --====================================================================
@@ -232,7 +232,7 @@ INSERT INTO marketing._AV_temp_aantallenpergemeente (
 SELECT postcode, gemeente, aantal_erp, aantal_huishoudens, (aantal_erp/aantal_huishoudens)*100 densiteit 
 FROM	(SELECT postcode, gemeente, COUNT(ID) aantal_erp FROM marketing._AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY postcode, gemeente ORDER BY postcode) erp
 	JOIN
-	(SELECT cd_zip_, SUM(totaal_huishoudens) aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2020 GROUP BY cd_zip_ ORDER BY cd_zip_) bestat
+	(SELECT cd_zip_, SUM(totaal_huishoudens) aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2021 GROUP BY cd_zip_ ORDER BY cd_zip_) bestat
 	ON erp.postcode = bestat.cd_zip_
 -------------------------------------------------------------------------------
 -- Densiteit per provincie
@@ -241,7 +241,7 @@ SELECT erp.provincie, SUM(erp.aantal_erp) aantal_erp, SUM(bestat.aantal_huishoud
 	SUM(erp.aantal_erp)/SUM(bestat.aantal_huishoudens)*100 densiteit  
 FROM (SELECT postcode, provincie, COUNT(ID) aantal_erp FROM marketing._AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY postcode, provincie ORDER BY postcode) erp
 	JOIN
-	(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2020 ORDER BY cd_zip_) bestat
+	(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2021 ORDER BY cd_zip_) bestat
 	ON erp.postcode = bestat.cd_zip_
 GROUP BY erp.provincie
 -------------------------------------------------------------------------------
@@ -258,7 +258,7 @@ FROM
 		--SUM(erp.aantal_erp)/SUM(bestat.aantal_huishoudens)*100 densiteit  
 	FROM (SELECT postcode::numeric, COUNT(ID) aantal_erp FROM marketing._AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY postcode ORDER BY postcode) erp
 		JOIN
-		(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2020 ORDER BY cd_zip_) belstat
+		(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2021 ORDER BY cd_zip_) belstat
 		ON erp.postcode = belstat.cd_zip_
 		JOIN
 		(SELECT DISTINCT postcode::numeric, partner_id, afdeling FROM marketing._AV_temp_lijstgemeentenperafdeling ORDER BY postcode) regdef
@@ -279,7 +279,7 @@ FROM
 		--SUM(erp.aantal_erp)/SUM(bestat.aantal_huishoudens)*100 densiteit  
 	FROM (SELECT postcode::numeric, COUNT(ID) aantal_erp FROM marketing._AV_temp_aantallenpergemeente WHERE land = 'Belgium' GROUP BY postcode ORDER BY postcode) erp
 		JOIN
-		(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2020 ORDER BY cd_zip_) belstat
+		(SELECT cd_zip_, totaal_huishoudens aantal_huishoudens FROM myvar v, marketing._m_so_huishoudensvolgenstypeperpostcode WHERE v.vorigjaar = 2021 ORDER BY cd_zip_) belstat
 		ON erp.postcode = belstat.cd_zip_
 		JOIN
 		(SELECT DISTINCT postcode::numeric, partner_id, afdeling, regionale FROM marketing._AV_temp_lijstgemeentenperafdeling ORDER BY postcode) regdef
