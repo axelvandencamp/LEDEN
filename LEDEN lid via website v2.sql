@@ -3,8 +3,8 @@
 --SET VARIABLES
 DROP TABLE IF EXISTS myvar;
 SELECT 
-	'2021-01-01'::date AS startdatum, 
-	'2021-12-31'::date AS einddatum  --vanaf 01/07 lid tot einde volgende jaar
+	'2022-01-01'::date AS startdatum, 
+	'2022-12-31'::date AS einddatum  --vanaf 01/07 lid tot einde volgende jaar
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
 --====================================================================

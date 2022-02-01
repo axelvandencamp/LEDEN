@@ -13,10 +13,10 @@ DROP TABLE IF EXISTS _AV_myvar;
 CREATE TEMP TABLE _AV_myvar 
 	(startdatum DATE, einddatum DATE, vorigjaar NUMERIC, ledenaantal_vorigjaar NUMERIC);
 
-INSERT INTO _AV_myvar VALUES(	'2021-01-01',	--startdatum
-				'2022-12-31',	--einddatum
-				2020,		--vorigjaar
-				123333);	--ledenaantal_vorigjaar
+INSERT INTO _AV_myvar VALUES(	'2022-01-01',	--startdatum
+				'2023-12-31',	--einddatum
+				2021,		--vorigjaar
+				133094);	--ledenaantal_vorigjaar
 				
 SELECT * FROM _AV_myvar;
 --====================================================================
@@ -32,6 +32,8 @@ CREATE TABLE marketing._m_so_aantalperAfdperJaar
 				
 SELECT * FROM marketing._m_so_aantalperAfdperJaar ORDER BY afdeling;
 INSERT INTO marketing._m_so_aantalperAfdperJaar VALUES(2020,355934,'Natuurpunt Laakdal',0);
+
+SELECT id, name naam FROM res_partner WHERE organisation_type_id = 1 ORDER BY name
 */
 --====================================================================
 --CREATE TMP TABLE

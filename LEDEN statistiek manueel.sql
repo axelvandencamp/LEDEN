@@ -4,9 +4,9 @@ DROP TABLE IF EXISTS _AV_myvar;
 CREATE TEMP TABLE _AV_myvar 
 	(startdatum DATE, einddatum DATE, ledenaantal_vorigjaar NUMERIC);
 
-INSERT INTO _AV_myvar VALUES('2021-01-01',	--startdatum
-				'2022-12-31',				--einddatum
-				123333);					--ledenaantal_vorigjaar
+INSERT INTO _AV_myvar VALUES('2022-01-01',	--startdatum
+				'2023-12-31',				--einddatum
+				133094);					--ledenaantal_vorigjaar
 				
 SELECT * FROM _AV_myvar;
 --====================================================================
