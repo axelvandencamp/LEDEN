@@ -316,7 +316,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 		CASE
 			WHEN login = 'apiuser' THEN 'Adreswijziging via website: '
 			WHEN login = 'admin' THEN 'Adreswijziging via administrator: '
-			WHEN login IN ('axel','vera','janvdb','linsay','kristienv') THEN 'Adreswijziging via Ledenadministratie: '
+			WHEN login IN ('axel.vandencamp','vera.baetens','linsay.bollen','kristien.vercauteren','jimmy.vanlooy','griet.vandendriessche') THEN 'Adreswijziging via Ledenadministratie: '
 			ELSE 'Adreswijziging via andere: '
 		END naam,
 		--login,
