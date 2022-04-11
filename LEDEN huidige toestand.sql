@@ -85,9 +85,9 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	_crm_land(c.id) land,
 	CASE
 		WHEN c.id = 21 AND p.crab_used = 'true' THEN
-			c.id + cc.id + ccs.id 
-				+ COALESCE(NULLIF(regexp_replace(p.street_nbr, '\D','','g'),'')::numeric,0) 
-				+ COALESCE(NULLIF(regexp_replace(p.street_bus, '\D','','g'),'')::numeric,0) 
+			c.id || cc.id || ccs.id 
+				|| COALESCE(NULLIF(regexp_replace(p.street_nbr, '\D','','g'),'')::numeric,0) 
+				|| COALESCE(NULLIF(regexp_replace(p.street_bus, '\D','','g'),'')::numeric,0) 
 		ELSE p.id 
 	END adres_id,
 	p.email,
