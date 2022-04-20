@@ -6,7 +6,7 @@ DROP TABLE IF EXISTS myvar;
 SELECT 
 	--'2016-12-31'::date AS cutoff_datum,
 	'2021-01-01'::date AS startdatum_vorigjaar,
-	'2022-12-31'::date AS einddatum_vorigjaar,
+	'2021-12-31'::date AS einddatum_vorigjaar,
 	'2022-01-01'::date AS startdatum,
 	'2022-12-31'::date AS einddatum,  --naar volgend jaar verzetten vanaf 01/07
 	'248514'::numeric AS afdeling --(aartselaar 248646; hobokense polder 248569; gent vzw 248514)
@@ -38,6 +38,8 @@ CREATE TEMP TABLE temp_NietHernieuwden (
 	zip_id integer,
 	country_id integer,
 	crab_used boolean,*/
+	website_gebruiker text,
+	suppressed text,
 	Aanmaakdatum date,
 	Startdatum date,
 	Einddatum date,
@@ -93,7 +95,7 @@ INSERT INTO temp_NietHernieuwden (
 			ELSE 'andere'
 		END AS provincie,
 		_crm_land(c.id) land,
-		COALESCE(p.email,p.email_work) email, -- in comment voor belactie
+		COALESCE(COALESCE(p.email,p.email_work),'') email, -- in comment voor belactie
 		/* enkel voor belactie
 		p.email,
 		p.email_work,
@@ -120,6 +122,10 @@ INSERT INTO temp_NietHernieuwden (
 		p.zip_id,
 		p.country_id,
 		p.crab_used,*/
+		--/* voor "VERZENDLIJST hernieuwingen" met evaluatie websitegebruikers en suppressionlist; anders lege tabellen voorzien;
+		CASE WHEN COALESCE(w.partner_id,0) = 0 THEN 'neen' ELSE 'ja' END website_gebruiker,
+	 	CASE WHEN COALESCE(s.emailaddress,'_') = '_' THEN 'neen'  
+			 WHEN COALESCE(s.emailaddress,'_') = '_' THEN 'neen' ELSE 'ja' END suppressed,
 		COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
 		p.membership_start, 
 		p.membership_stop, 
@@ -163,6 +169,9 @@ INSERT INTO temp_NietHernieuwden (
 				AND pp.membership_product
 			GROUP BY ml.partner
 		) ml2 ON ml2.partner = ml1.partner
+		LEFT OUTER JOIN marketing._av_temp_websitegebruikers w ON w.partner_id = p.id
+		LEFT OUTER JOIN marketing._av_temp_suppressionlist s ON LOWER(s.emailaddress) = LOWER(p.email) 
+		LEFT OUTER JOIN marketing._av_temp_suppressionlist s2 ON LOWER(s2.emailaddress) = LOWER(p.email_work)
 
 		
 		--land, straat, gemeente info
@@ -209,6 +218,16 @@ SET lml_opgzegdatum = (SELECT ml.date_cancel
 			WHERE ml.id = nh.lidmaatschapslijn);
 ---------------------------------------
 SELECT * /*count(partner_id)*/ FROM  temp_NietHernieuwden nh;
+--verzendlijst via POST
+SELECT * FROM temp_NietHernieuwden nh 
+WHERE (nh.website_gebruiker = 'neen') OR (nh.website_gebruiker = 'ja' AND nh.suppressed = 'ja')
+	AND COALESCE(nooit_contacteren,'false') = 'false'
+	--AND COALESCE(derde_betaler,'_') = '_'
+--verzendlijst via MAIL
+SELECT * FROM temp_NietHernieuwden nh 
+WHERE (nh.website_gebruiker = 'ja' AND nh.suppressed = 'neen')
+	AND COALESCE(nooit_contacteren,'false') = 'false'
+	--AND COALESCE(derde_betaler,'_') = '_'
 --=====================================
 --TEST
 /*
