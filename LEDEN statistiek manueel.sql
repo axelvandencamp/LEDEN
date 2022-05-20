@@ -144,7 +144,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 	SELECT 5, 'Niet hernieuwde leden: ', 4 volgnummer, 'Leden', COUNT(DISTINCT p.id), now()::date, ''
 	FROM _AV_myvar v, res_partner p
 	WHERE p.membership_end = (v.startdatum + INTERVAL 'day -1')::date
-		AND p.membership_state <> 'canceled'
+		AND NOT(p.membership_state IN ('canceled','invoiced'))
 );
 ----------------------------------------
 -- 5/ NIET HERNIEUWDE LEDEN procentueel -----
