@@ -377,10 +377,16 @@ INSERT INTO tempLEDEN_statistiek_manueel
 INSERT INTO tempLEDEN_statistiek_manueel
 (	SELECT 	12, 'Leden met email adres ingevuld: ', 35 volgnummer, 'Data', COUNT(DISTINCT p.id), now()::date, 'Zowel het email adres als het werk email adres worden geteld op basis van leden, gratis leden en niet hernieuwde leden (1x per lid).'
 	FROM 	_AV_myvar v, res_partner p
-	WHERE 	(membership_state_b IN ('paid','invoiced','wait_member')
-		OR p.free_member = 't')
-		AND (p.email <> '' OR NOT(p.email IS NULL) OR p.email_work <> '' OR NOT(p.email_work IS NULL))
+	WHERE --alle actieve leden
+		p.active = 't'	
+		--overledenen niet
+		AND COALESCE(p.deceased,'f') = 'f'
+		--betaald, domi of gratis
+		AND (p.membership_state IN ('paid','invoiced') OR p.free_member)
+		--
+		AND (NOT(COALESCE(p.email_work,p.email) IS NULL) OR COALESCE(p.email_work,p.email) <> '') --(p.email <> '' OR NOT(p.email IS NULL) OR p.email_work <> '' OR NOT(p.email_work IS NULL))
 );
+
 ----------------------------------------
 -- 32/ email telefoonnrs ---------------
 ----------------------------------------
