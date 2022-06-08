@@ -159,7 +159,7 @@ INSERT INTO marketing._AV_temp_aantallenpergemeente (
 			OR ((ml.state = 'invoiced' AND COALESCE(sm.sm_id,0) <> 0)
 		-- gefactureerd met domi
 					OR (ml.state = 'invoiced' AND COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )))	*/	
-		p.active = 't'	
+		p.active = 't'	AND cc.active
 		--we tellen voor alle actieve leden
 		AND COALESCE(p.deceased,'f') = 'f' 
 		--overledenen niet
