@@ -228,6 +228,12 @@ SELECT * FROM temp_NietHernieuwden nh
 WHERE (nh.website_gebruiker = 'ja' AND nh.suppressed = 'neen')
 	AND COALESCE(nooit_contacteren,'false') = 'false'
 	--AND COALESCE(derde_betaler,'_') = '_'
+--verzendlijst: te hernieuwen met email adres en geregistreerde gebruiker
+SELECT * FROM  temp_NietHernieuwden nh
+WHERE COALESCE(email,'_') <> '_' AND website_gebruiker = 'ja' AND suppressed = 'neen'
+--verzendlijst: te hernieuwen met email adres en NIET geregistreerde gebruiker
+SELECT * FROM  temp_NietHernieuwden nh
+WHERE COALESCE(email,'_') <> '_' AND website_gebruiker = 'neen' --AND suppressed = 'neen'
 --=====================================
 --TEST
 /*
