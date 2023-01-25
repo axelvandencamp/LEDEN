@@ -10,9 +10,9 @@
 --SET VARIABLES
 DROP TABLE IF EXISTS myvar;
 SELECT 
-	'2022-01-01'::date AS startdatum, 
-	'2023-12-31'::date AS einddatum,
-	2021 AS vorigjaar
+	'2023-01-01'::date AS startdatum, 
+	'2024-12-31'::date AS einddatum,
+	2022 AS vorigjaar
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
 --====================================================================
@@ -159,14 +159,14 @@ INSERT INTO marketing._AV_temp_aantallenpergemeente (
 			OR ((ml.state = 'invoiced' AND COALESCE(sm.sm_id,0) <> 0)
 		-- gefactureerd met domi
 					OR (ml.state = 'invoiced' AND COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )))	*/	
-		p.active = 't'	AND cc.active
+		p.active = 't'	--AND cc.active
 		--we tellen voor alle actieve leden
 		AND COALESCE(p.deceased,'f') = 'f' 
 		--overledenen niet
 		AND COALESCE(p.free_member,'f') = 'f'
 		--gratis leden niet
 		AND p.membership_state IN ('paid','invoiced') -- **** uitschakelen voor jaarovergang ****
-		--AND p.membership_start < '2021-01-01' -- JAAROVERGANG		
+		--AND p.membership_start < '2023-01-01' -- JAAROVERGANG		
 	--=============================================================================
 	--GRATIS LEDEN TOEVOEGEN
 	UNION ALL
@@ -220,7 +220,7 @@ INSERT INTO marketing._AV_temp_aantallenpergemeente (
 		--wervende organisatie
 		LEFT OUTER JOIN res_partner p5 ON p.recruiting_organisation_id = p5.id
 	--=============================================================================
-	WHERE 	p.active = 't'	AND cc.active
+	WHERE 	p.active = 't'	--AND cc.active
 		--we tellen voor alle actieve leden
 		AND COALESCE(p.deceased,'f') = 'f' 
 		--overledenen niet
