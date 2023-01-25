@@ -10,6 +10,7 @@ FROM marketing._CRM_partnerinfo() sq1
 		LEFT OUTER JOIN res_partner r ON a.partner_up_id = r.id
 		LEFT OUTER JOIN res_organisation_type ot2 ON ot2.id = r.organisation_type_id
 	WHERE p.membership_state IN ('paid','invoiced','free')
+		--AND p.membership_start < '2023-01-01' -- jaarovergang
 --
 	) sq2 ON sq2.partner_id = sq1.partner_id
 	JOIN res_partner r ON r.id = sq2.regionaal_id
