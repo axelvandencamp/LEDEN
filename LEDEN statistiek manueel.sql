@@ -4,8 +4,8 @@ DROP TABLE IF EXISTS _AV_myvar;
 CREATE TEMP TABLE _AV_myvar 
 	(startdatum DATE, einddatum DATE, ledenaantal_vorigjaar NUMERIC);
 
-INSERT INTO _AV_myvar VALUES('2022-01-01',	--startdatum
-				'2023-12-31',				--einddatum
+INSERT INTO _AV_myvar VALUES('2023-01-01',	--startdatum
+				'2024-12-31',				--einddatum
 				133094);					--ledenaantal_vorigjaar
 				
 SELECT * FROM _AV_myvar;
@@ -61,7 +61,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 	FROM _AV_myvar v, res_partner p
 	WHERE p.membership_state IN ('paid','invoiced','free')
 		AND p.membership_start >= v.startdatum
-		--AND p.membership_start < '2021-01-01'
+		--AND p.membership_start < '2023-01-01' -- jaarovergang
 		
 );
 ----------------------------------------
@@ -145,6 +145,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 	FROM _AV_myvar v, res_partner p
 	WHERE p.membership_end = (v.startdatum + INTERVAL 'day -1')::date
 		AND NOT(p.membership_state IN ('canceled','invoiced'))
+		--AND p.membership_start < '2023-01-01' -- jaarovergang
 );
 ----------------------------------------
 -- 5/ NIET HERNIEUWDE LEDEN procentueel -----
@@ -316,7 +317,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 		CASE
 			WHEN login = 'apiuser' THEN 'Adreswijziging via website: '
 			WHEN login = 'admin' THEN 'Adreswijziging via administrator: '
-			WHEN login IN ('axel.vandencamp','vera.baetens','linsay.bollen','kristien.vercauteren','jimmy.vanlooy','griet.vandendriessche') THEN 'Adreswijziging via Ledenadministratie: '
+			WHEN login IN ('axel.vandencamp','vera.baetens','kristien.vercauteren','griet.vandendriessche') THEN 'Adreswijziging via Ledenadministratie: '
 			ELSE 'Adreswijziging via andere: '
 		END naam,
 		--login,
@@ -369,6 +370,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 	FROM 	_AV_myvar v, res_partner p
 	WHERE 	(membership_state_b IN ('paid','invoiced','wait_member')
 		OR p.free_member = 't')
+ 		--AND p.membership_start < '2023-01-01' -- jaarovergang
 		AND p.address_state_id = 2
 );	
 ----------------------------------------
@@ -383,7 +385,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 		AND COALESCE(p.deceased,'f') = 'f'
 		--betaald, domi of gratis
 		AND (p.membership_state IN ('paid','invoiced') OR p.free_member)
-		--
+		--AND p.membership_start < '2023-01-01' -- jaarovergang
 		AND (NOT(COALESCE(p.email_work,p.email) IS NULL) OR COALESCE(p.email_work,p.email) <> '') --(p.email <> '' OR NOT(p.email IS NULL) OR p.email_work <> '' OR NOT(p.email_work IS NULL))
 );
 
@@ -440,6 +442,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 			res_partner p
 			JOIN membership_membership_line ml ON p.id = ml.partner
 		WHERE ml.date_cancel BETWEEN v.startdatum AND v.einddatum
+			--AND p.membership_start < '2023-01-01' -- jaarovergang
 			AND p.active = 'f'	
 		) SQ1
 );
