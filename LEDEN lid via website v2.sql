@@ -31,7 +31,7 @@ FROM	myvar v,
 WHERE 	--alle partners aangemaakt tijdens gevraagde period (zowel actief als inactief)
 	p.create_date BETWEEN v.startdatum AND v.einddatum
 	AND (u.login IN ('apiuser','apiuser_educatie') OR u2.login IN ('apiuser','apiuser_educatie'))
-	--AND p.membership_start < '2021-01-01' --JAAROVERGANG
+	--AND p.membership_start < '2023-01-01' --JAAROVERGANG
 	--AND u.login IN ('apiuser','apiuser_educatie')
 	--AND COALESCE(pi2.id,0) >  0
 	--AND p.active
