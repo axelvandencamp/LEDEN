@@ -6,7 +6,7 @@ CREATE TEMP TABLE _AV_myvar
 
 INSERT INTO _AV_myvar VALUES('2023-01-01',	--startdatum
 				'2024-12-31',				--einddatum
-				133094);					--ledenaantal_vorigjaar
+				131703);					--ledenaantal_vorigjaar
 				
 SELECT * FROM _AV_myvar;
 --====================================================================
