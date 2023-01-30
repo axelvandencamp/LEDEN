@@ -83,7 +83,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		ELSE 'andere'
 	END AS provincie,
 	_crm_land(c.id) land,
-	cc.zip||ccs.id::text||p.street_nbr::text||p.street_bus::text adres_id,
+	COALESCE(cc.zip,'_')||ccs.id::text||COALESCE(p.street_nbr::text,'_')||COALESCE(p.street_bus::text,'_') adres_id,
 	p.email,
 	--COALESCE(ml.id::text,'') ml_id,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
@@ -283,7 +283,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		ELSE 'andere'
 	END AS provincie,
 	_crm_land(c.id) land,
-	cc.zip||ccs.id::text||p.street_nbr::text||p.street_bus::text adres_id,
+	COALESCE(cc.zip,'_')||ccs.id::text||COALESCE(p.street_nbr::text,'_')||COALESCE(p.street_bus::text,'_') adres_id,
 	p.email email,
 	--COALESCE(ml.id::text,'') ml_id,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
