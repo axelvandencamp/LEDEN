@@ -134,7 +134,7 @@ INSERT INTO temp_NietHernieuwden (
 		p.membership_cancel,
 		NULL::date lml_opgzegdatum,
 		p.membership_state,
-		COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
+		COALESCE(COALESCE(a2.name,a.name),'Natuurpunt') Afdeling,
 		mo.name herkomst_lidmaatschap,
 		p.third_payer_id,
 		CASE
