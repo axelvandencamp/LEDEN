@@ -43,8 +43,8 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	END aanspreking,*/
 	p.gender AS geslacht,
 	--p.name as partner,
-	p.first_name as voornaam,
-	p.last_name as achternaam,
+	COALESCE(p.first_name,'') as voornaam,
+	COALESCE(p.last_name,'') as achternaam,
 	CASE
 		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.first_name) > 0 THEN p.first_name || ' en ' || p6.first_name ELSE p.first_name
 	END voornaam_lidkaart,
@@ -53,23 +53,23 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	END achternaam_lidkaart,
 	p.birthday,
 	EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
-	p.street2 building,
+	COALESCE(p.street2,'') huisnaam,
 	CASE
-		WHEN c.id = 21 AND p.crab_used = 'true' THEN ccs.name
-		ELSE p.street
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN COALESCE(ccs.name,'')
+		ELSE COALESCE(p.street,'')
 	END straat,
 	CASE
-		WHEN c.id = 21 AND p.crab_used = 'true' THEN p.street_nbr ELSE ''
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN COALESCE(p.street_nbr,'') ELSE ''
 	END huisnummer, 
-	p.street_bus bus,
+	COALESCE(p.street_bus,'') bus,
 	CASE
-		WHEN c.id = 21 AND p.crab_used = 'true' THEN cc.zip
-		ELSE p.zip
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN COALESCE(cc.zip,'')
+		ELSE COALESCE(p.zip,'')
 	END postcode,
 	CASE 
-		WHEN c.id = 21 THEN cc.name ELSE p.city 
+		WHEN c.id = 21 THEN COALESCE(cc.name,'') ELSE COALESCE(p.city,'') 
 	END woonplaats,
-	p.postbus_nbr postbus,
+	COALESCE(p.postbus_nbr,'') postbus,
 	CASE
 		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 1000 AND 1299 THEN 'Brussel' 
 		WHEN p.country_id = 21 AND (substring(p.zip from '[0-9]+')::numeric BETWEEN 1500 AND 1999 OR substring(p.zip from '[0-9]+')::numeric BETWEEN 3000 AND 3499) THEN 'Vlaams Brabant'
@@ -93,7 +93,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p.membership_state huidige_lidmaatschap_status,
 	COALESCE(p.membership_start,p.create_date::date) aanmaak_datum,
 	--ml.date_from lml_date_from,
-		p.membership_start Lidmaatschap_startdatum, 
+	p.membership_start Lidmaatschap_startdatum, 
 	p.membership_stop Lidmaatschap_einddatum,  
 	p.membership_pay_date betaaldatum,
 	p.membership_renewal_date hernieuwingsdatum,
