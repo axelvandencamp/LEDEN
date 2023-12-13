@@ -232,14 +232,14 @@ INSERT into _AV_temp_LEDENANALYSE
 
 --SELECT * FROM _AV_temp_LEDENANALYSE WHERE partner_id IN (17319,17322)		
 
-DROP TABLE IF EXISTS _AV_temp_LEDENANALYSEbyPartner;
+DROP TABLE IF EXISTS marketing._AV_temp_LEDENANALYSEbyPartner;
 
-CREATE TABLE _AV_temp_LEDENANALYSEbyPartner (
+CREATE TABLE marketing._AV_temp_LEDENANALYSEbyPartner (
 	partner_id NUMERIC, duurtijd NUMERIC, duurtijd_voor_onderbreking NUMERIC, duurtijd_na_onderbreking NUMERIC, start_onderbreking NUMERIC, start_na_onderbreking NUMERIC,
 	/*date_from, jaar_start, date_to, jaar_einde,*/ jaar_start_1 NUMERIC, jaar_einde_L NUMERIC, 
 	via_afdeling NUMERIC, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie NUMERIC, herkomst TEXT, herkomst_detail TEXT, domi NUMERIC, ooit_domi NUMERIC, domi_laatste_eindat DATE);
 
-INSERT INTO _AV_temp_LEDENANALYSEbyPartner
+INSERT INTO marketing._AV_temp_LEDENANALYSEbyPartner
 	(SELECT partner_id, SUM(duurtijd) duurtijd, 0, 0, MAX(start_onderbreking) start_onderbreking, MAX(start_na_onderbreking) start_na_onderbreking,
 		/*date_from, jaar_start, date_to, jaar_einde,*/ jaar_start_1, jaar_einde_L, 
 		via_afdeling, /*Kustcampagne, Zomer_Antw, Face_To_Face, Geschenk, Website, Partners, BC, B_en_F, MWA, MA, Andere,*/ Belactie, herkomst, herkomst_detail, domi, 0, NULL
@@ -248,17 +248,17 @@ INSERT INTO _AV_temp_LEDENANALYSEbyPartner
 
 --SELECT * FROM _AV_temp_LEDENANALYSEbyPartner WHERE partner_id IN (17319,17322) LIMIT 10	
 
-UPDATE _AV_temp_LEDENANALYSEbyPartner la
+UPDATE marketing._AV_temp_LEDENANALYSEbyPartner la
 SET duurtijd_voor_onderbreking = x.duurtijd
 FROM (SELECT partner_id, SUM(duurtijd) duurtijd FROM _AV_temp_LEDENANALYSE WHERE onderbreking = 0 GROUP BY partner_id) x 
 WHERE la.partner_id = x.partner_id;
 
-UPDATE _AV_temp_LEDENANALYSEbyPartner la
+UPDATE marketing._AV_temp_LEDENANALYSEbyPartner la
 SET duurtijd_na_onderbreking = x.duurtijd
 FROM (SELECT partner_id, SUM(duurtijd) duurtijd FROM _AV_temp_LEDENANALYSE WHERE onderbreking = 1 GROUP BY partner_id) x 
 WHERE la.partner_id = x.partner_id;
 
-UPDATE _AV_temp_LEDENANALYSEbyPartner la
+UPDATE marketing._AV_temp_LEDENANALYSEbyPartner la
 SET ooit_domi = 1, domi_laatste_eindat = x.last_debit_date
 FROM (SELECT SQsm1.partner_id, sm.last_debit_date FROM
 		(SELECT pb.partner_id, MAX(sm.id) sm_id
@@ -273,14 +273,15 @@ WHERE la.partner_id = x.partner_id;
 ---------
 -- "_AV_temp_LEDENANALYSEbyPartner" updaten met baseline voor "herkomst lidmaatschap"
 ---------
+/*
 UPDATE _AV_temp_LEDENANALYSEbyPartner lp
 SET herkomst = SQ1.herkomst, herkomst_detail = SQ1.herkomst_detail FROM (SELECT * FROM _AV_tempLEDENANALYSE_baseline) SQ1 
-WHERE SQ1.partner_id = lp.partner_id
-
+WHERE SQ1.partner_id = lp.partner_id;
+*/
 --------
 SELECT partner_id, duurtijd, duurtijd_voor_onderbreking, duurtijd_na_onderbreking, start_onderbreking, start_na_onderbreking, jaar_start_1, jaar_einde_l
 		via_afdeling, belactie, COALESCE(herkomst,'') herkomst, COALESCE(herkomst_detail,'') herkomst_detail, domi, ooit_domi, domi_laatste_eindat
-FROM _AV_temp_LEDENANALYSEbyPartner;
+FROM marketing._AV_temp_LEDENANALYSEbyPartner;
 
 -----------------------------------------------------------------------------------
 -- test queries
