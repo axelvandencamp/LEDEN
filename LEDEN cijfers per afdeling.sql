@@ -55,7 +55,7 @@ INSERT INTO marketing._AV_temp_LEDENcijfersperafdeling
 		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 	WHERE p.active AND p.membership_state IN ('paid','invoiced','free')
-		--AND p.membership_start < '2023-01-01' --JAAROVERGANG
+		AND p.membership_start < '2024-01-01' --JAAROVERGANG
 		--AND p.membership_start >= v.startdatum
 		--AND COALESCE(a2.id,a.id) = 248516
 	GROUP BY COALESCE(a2.id,a.id), COALESCE(COALESCE(a2.name,a.name),'onbekend'));
@@ -88,7 +88,7 @@ FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(a2.id,a.id) afd_id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 	WHERE p.membership_state IN ('paid','invoiced','free')
 		AND p.membership_start >= v.startdatum
-		--AND p.membership_start < '2023-01-01' --JAAROVERGANG
+		AND p.membership_start < '2024-01-01' --JAAROVERGANG
 	GROUP BY COALESCE(a2.id,a.id)) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 
@@ -110,7 +110,7 @@ FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(p.recruiting_organisation_id,
 		--LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 	WHERE p.membership_state IN ('paid','invoiced','free')
 	  AND p.membership_start >= v.startdatum
-	  --AND p.membership_start < '2023-01-01' --JAAROVERGANG
+	  AND p.membership_start < '2024-01-01' --JAAROVERGANG
 	GROUP BY p.recruiting_organisation_id) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 --====================================================================
