@@ -13,10 +13,10 @@ DROP TABLE IF EXISTS _AV_myvar;
 CREATE TEMP TABLE _AV_myvar 
 	(startdatum DATE, einddatum DATE, vorigjaar NUMERIC, ledenaantal_vorigjaar NUMERIC);
 
-INSERT INTO _AV_myvar VALUES(	'2023-01-01',	--startdatum
-				'2024-12-31',	--einddatum
-				2022,		--vorigjaar
-				131703);	--ledenaantal_vorigjaar
+INSERT INTO _AV_myvar VALUES(	'2024-01-01',	--startdatum
+				'2025-12-31',	--einddatum
+				2023,		--vorigjaar
+				125056);	--ledenaantal_vorigjaar
 				
 SELECT * FROM _AV_myvar;
 --====================================================================
@@ -55,7 +55,7 @@ INSERT INTO marketing._AV_temp_LEDENcijfersperafdeling
 		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 	WHERE p.active AND p.membership_state IN ('paid','invoiced','free')
-		AND p.membership_start < '2024-01-01' --JAAROVERGANG
+		--AND p.membership_start < '2024-01-01' --JAAROVERGANG
 		--AND p.membership_start >= v.startdatum
 		--AND COALESCE(a2.id,a.id) = 248516
 	GROUP BY COALESCE(a2.id,a.id), COALESCE(COALESCE(a2.name,a.name),'onbekend'));
@@ -78,6 +78,7 @@ FROM (SELECT COALESCE(a2.id,a.id) afd_id,
 	GROUP BY COALESCE(a2.id,a.id), afd.aantal) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 --====================================================================
+--SELECT * FROM marketing._m_so_aantalperAfdperJaar afd WHERE afd.jaar = 2023 afd.id = 15095
 -- Nieuwe leden
 ---------------
 UPDATE marketing._AV_temp_LEDENcijfersperafdeling T1
@@ -88,7 +89,7 @@ FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(a2.id,a.id) afd_id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 	WHERE p.membership_state IN ('paid','invoiced','free')
 		AND p.membership_start >= v.startdatum
-		AND p.membership_start < '2024-01-01' --JAAROVERGANG
+		--AND p.membership_start < '2024-01-01' --JAAROVERGANG
 	GROUP BY COALESCE(a2.id,a.id)) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 
@@ -110,7 +111,7 @@ FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(p.recruiting_organisation_id,
 		--LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 	WHERE p.membership_state IN ('paid','invoiced','free')
 	  AND p.membership_start >= v.startdatum
-	  AND p.membership_start < '2024-01-01' --JAAROVERGANG
+	  --AND p.membership_start < '2024-01-01' --JAAROVERGANG
 	GROUP BY p.recruiting_organisation_id) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 --====================================================================
