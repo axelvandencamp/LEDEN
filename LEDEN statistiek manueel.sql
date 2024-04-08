@@ -4,9 +4,9 @@ DROP TABLE IF EXISTS _AV_myvar;
 CREATE TEMP TABLE _AV_myvar 
 	(startdatum DATE, einddatum DATE, ledenaantal_vorigjaar NUMERIC);
 
-INSERT INTO _AV_myvar VALUES('2023-01-01',	--startdatum
-				'2024-12-31',				--einddatum
-				131703);					--ledenaantal_vorigjaar
+INSERT INTO _AV_myvar VALUES('2024-01-01',	--startdatum
+				'2025-12-31',				--einddatum
+				128065);					--ledenaantal_vorigjaar
 				
 SELECT * FROM _AV_myvar;
 --====================================================================
@@ -317,7 +317,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 		CASE
 			WHEN login = 'apiuser' THEN 'Adreswijziging via website: '
 			WHEN login = 'admin' THEN 'Adreswijziging via administrator: '
-			WHEN login IN ('axel.vandencamp','vera.baetens','kristien.vercauteren','griet.vandendriessche') THEN 'Adreswijziging via Ledenadministratie: '
+			WHEN login IN ('axel.vandencamp','vera.baetens','kristien.vercauteren','griet.vandendriessche','lynn.sneyers','diederik.willems') THEN 'Adreswijziging via Ledenadministratie: '
 			ELSE 'Adreswijziging via andere: '
 		END naam,
 		--login,
@@ -395,7 +395,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 INSERT INTO tempLEDEN_statistiek_manueel
 (	SELECT 	13, 'Leden met telefoon nummer ingevuld: ', 36 volgnummer, 'Data', COUNT(DISTINCT p.id), now()::date, 'Zowel het telnr als het werk telnr als het gsm nrs worden geteld op basis van leden, gratis leden en niet hernieuwde leden (1x per lid).'
 	FROM 	_AV_myvar v, res_partner p
-	WHERE 	(membership_state_b IN ('paid','invoiced','wait_member')
+	WHERE 	(membership_state IN ('paid','invoiced','free')
 		OR p.free_member = 't')
 		AND (p.phone <> '' OR NOT(p.phone IS NULL) OR p.phone_work <> '' OR NOT(p.phone_work IS NULL) OR p.mobile <> '' OR NOT(p.mobile IS NULL))
 );
