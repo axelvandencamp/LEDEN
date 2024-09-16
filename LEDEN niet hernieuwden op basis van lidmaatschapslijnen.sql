@@ -55,6 +55,7 @@ CREATE TEMP TABLE temp_NietHernieuwden (
 	wenst_geen_email_van_NP numeric,
 	nooit_contacteren text,
 	OGM text,
+	pom_paylink text,
 	bedrag numeric,
 	product text,
 	type_digitaal_post text,
@@ -145,6 +146,7 @@ INSERT INTO temp_NietHernieuwden (
 		END wenst_geen_email_van_NP,
 		p.iets_te_verbergen nooit_contacteren,
 		NULL OGM,
+		NULL pom_paylink,
 		NULL::numeric bedrag,
 		NULL product,
 		CASE WHEN COALESCE(p.opt_out_letter,'f') = 't' THEN 'geen post gewenst'
@@ -195,7 +197,18 @@ SET OGM = (SELECT i.reference
 			JOIN account_invoice i ON i.id = il.invoice_id
 			JOIN product_product pp ON pp.id = il.product_id
 		WHERE nh.lidmaatschapslijn = ml.id);
---bedrag toeveogen
+--pom_paylink toevoegen
+UPDATE temp_NietHernieuwden nh
+SET pom_paylink = (SELECT pom.pom_paylink_short
+		FROM pom_paylink pom
+			JOIN account_invoice i ON i.pom_paylink_id = pom.id
+			JOIN account_invoice_line il ON i.id = il.invoice_id
+			--JOIN account_invoice i ON i.id = il.invoice_id
+			JOIN membership_membership_line ml ON il.id = ml.account_invoice_line
+		WHERE nh.lidmaatschapslijn = ml.id);
+		
+		--SELECT * FROM pom_paylink
+--bedrag toevoegen
 UPDATE temp_NietHernieuwden nh
 SET bedrag = (SELECT i.amount_total 
 		FROM membership_membership_line ml 
