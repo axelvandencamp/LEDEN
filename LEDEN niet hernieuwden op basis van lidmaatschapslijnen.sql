@@ -185,9 +185,14 @@ INSERT INTO temp_NietHernieuwden (
 		--afdeling vs afdeling eigen keuze
 		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+		--regionale
+		LEFT OUTER JOIN res_partner r ON r.id = COALESCE(a2.partner_up_id,a.partner_up_id)
+
+
 	WHERE p.active AND COALESCE(p.deceased,'f') = 'f'
 		AND p.membership_state = 'wait_member'
 		--AND COALESCE(a2.id,a.id) = v.afdeling
+		--AND r.id = 15192
 	);
 --OGM toevoegen
 UPDATE temp_NietHernieuwden nh
