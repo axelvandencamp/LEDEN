@@ -4,7 +4,7 @@ CREATE TEMP TABLE _AV_myvar
 	(einddatum DATE
 		 );
 
-INSERT INTO _AV_myvar VALUES('2022-12-31'	--einddatum
+INSERT INTO _AV_myvar VALUES('2021-12-31'	--einddatum
 				);
 SELECT * FROM _AV_myvar;
 ----------------------------------------------
@@ -79,4 +79,4 @@ WHERE 	p.membership_end = v.einddatum
 	AND COALESCE(p.deceased,'f') = 'f' 
 	--overledenen niet
 	AND NOT(p.membership_state IN ('paid','invoiced','free'))	
-	AND r.id = 15192
+	--AND r.id = 15192
