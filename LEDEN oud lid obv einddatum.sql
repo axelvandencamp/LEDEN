@@ -4,7 +4,7 @@ CREATE TEMP TABLE _AV_myvar
 	(einddatum DATE
 		 );
 
-INSERT INTO _AV_myvar VALUES('2021-12-31'	--einddatum
+INSERT INTO _AV_myvar VALUES('2022-12-31'	--einddatum
 				);
 SELECT * FROM _AV_myvar;
 ----------------------------------------------
@@ -35,6 +35,7 @@ SELECT
 	COALESCE(p.phone_work,p.phone) telefoonnr,
 	p.mobile gsm,
 	p.membership_state huidige_lidmaatschap_status,
+	r.id reg,
 	COALESCE(p.membership_start,p.create_date::date) aanmaak_datum,
 	--ml.date_from lml_date_from,
 	p.membership_start Lidmaatschap_startdatum, 
@@ -67,9 +68,15 @@ FROM 	_av_myvar v, res_partner p
 	JOIN res_country c ON p.country_id = c.id
 	LEFT OUTER JOIN res_country_city_street ccs ON p.street_id = ccs.id
 	LEFT OUTER JOIN res_country_city cc ON p.zip_id = cc.id
+	--afdeling vs afdeling eigen keuze
+	LEFT OUTER JOIN res_partner a ON p.department_id = a.id
+	LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+	--regionale
+	LEFT OUTER JOIN res_partner r ON r.id = COALESCE(a2.partner_up_id,a.partner_up_id)
 WHERE 	p.membership_end = v.einddatum
 	AND p.active = 't'	
 	--we tellen voor alle actieve leden
 	AND COALESCE(p.deceased,'f') = 'f' 
 	--overledenen niet
 	AND NOT(p.membership_state IN ('paid','invoiced','free'))	
+	AND r.id = 15192
