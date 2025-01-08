@@ -54,7 +54,16 @@ INSERT INTO marketing._AV_temp_LEDENcijfersperafdeling
 	FROM _AV_myvar v, res_partner p
 		LEFT OUTER JOIN res_partner a ON p.department_id = a.id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
-	WHERE p.active AND p.membership_state IN ('paid','invoiced','free')
+		-- enkel voor fout in ERP met geannuleerde mandaten 2024
+        LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = p.id
+	WHERE p.active 
+		--AND p.membership_state IN ('paid','invoiced','free') -- in comment voor JAAROVERGANG
+		--JAAROVERGANG HIERONDER
+        AND p.membership_state IN ('paid','invoiced','free','waiting') -- jaarovergang; REJECTS reeds verwerkt
+        AND p.membership_start < '2025-01-01' -- nieuwe leden na jaarovergang niet meetellen
+        AND NOT(p.membership_state = 'waiting' AND p.membership_end < '2024-12-31')
+        -- enkel voor fout in ERP met geannuleerde mandaten 2024
+        AND NOT(p.membership_state = 'invoiced' AND COALESCE(sm.sm_id,0)=0)
 		--AND p.membership_start < '2024-01-01' --JAAROVERGANG
 		--AND p.membership_start >= v.startdatum
 		--AND COALESCE(a2.id,a.id) = 248516
@@ -74,7 +83,8 @@ FROM (SELECT COALESCE(a2.id,a.id) afd_id,
 		LEFT OUTER JOIN marketing._m_so_aantalperAfdperJaar afd ON afd.id = COALESCE(a2.id,a.id) AND afd.aantal <> 0
 	WHERE afd.jaar = v.vorigjaar
 		AND p.membership_end = (v.startdatum + INTERVAL 'day -1')::date
-		AND p.membership_state <> 'canceled'
+		AND NOT(p.membership_state IN ('canceled','invoiced')) -- 'invoiced' toegevoegd specifiek voor fout 2024
+		AND p.membership_start < '2024-01-01' -- jaarovergang
 	GROUP BY COALESCE(a2.id,a.id), afd.aantal) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 --====================================================================
@@ -89,7 +99,7 @@ FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(a2.id,a.id) afd_id
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 	WHERE p.membership_state IN ('paid','invoiced','free')
 		AND p.membership_start >= v.startdatum
-		--AND p.membership_start < '2024-01-01' --JAAROVERGANG
+		AND p.membership_start < '2025-01-01' --JAAROVERGANG
 	GROUP BY COALESCE(a2.id,a.id)) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 
@@ -109,9 +119,11 @@ FROM (SELECT COUNT(DISTINCT p.id) aantal, COALESCE(p.recruiting_organisation_id,
 	FROM _AV_myvar v, res_partner p
 		--LEFT OUTER JOIN res_partner a ON p.department_id = a.id
 		--LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+		-- enkel voor fout in ERP met geannuleerde mandaten 2024
+        LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = p.id
 	WHERE p.membership_state IN ('paid','invoiced','free')
-	  AND p.membership_start >= v.startdatum
-	  --AND p.membership_start < '2024-01-01' --JAAROVERGANG
+	  	AND p.membership_start >= v.startdatum
+		AND p.membership_start < '2025-01-01' --JAAROVERGANG
 	GROUP BY p.recruiting_organisation_id) SQ1
 WHERE T1.afd_id = SQ1.afd_id;
 --====================================================================
