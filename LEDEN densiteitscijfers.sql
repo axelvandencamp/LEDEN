@@ -142,31 +142,19 @@ INSERT INTO marketing._AV_temp_aantallenpergemeente (
 		--parnter info
 		LEFT OUTER JOIN res_partner a3 ON i.partner_id = a3.id
 	--=============================================================================
-	WHERE 	/*p.active = 't'	AND cc.active
+	WHERE p.active = 't'	--AND cc.active
 		--we tellen voor alle actieve leden
 		AND COALESCE(p.deceased,'f') = 'f' 
 		--overledenen niet
 		AND COALESCE(p.free_member,'f') = 'f'
 		--gratis leden niet
-		AND (ml.date_from BETWEEN v.startdatum and v.einddatum OR v.startdatum BETWEEN ml.date_from AND ml.date_to) AND ml.membership_id IN (2,5,6,7,205,206,207,208)
-		--enkel lidmaatschapsproduct lijnen met een einddatum in 2015
-		--AND p.membership_start < '2013-01-01' 
-		--lidmaatschap start voor 01/01/2013
-		AND (COALESCE(ml.date_cancel,'2099-12-31')) > now()::date
-		--opzeggingen met een opzegdatum na vandaag (voor vandaag worden niet meegenomen)
-		AND (ml.state = 'paid'
-		-- betaald lidmaatschap
-			OR ((ml.state = 'invoiced' AND COALESCE(sm.sm_id,0) <> 0)
-		-- gefactureerd met domi
-					OR (ml.state = 'invoiced' AND COALESCE(i.partner_id,0) <> 0 AND COALESCE(a3.organisation_type_id,0) = 1 )))	*/	
-		p.active = 't'	--AND cc.active
-		--we tellen voor alle actieve leden
-		AND COALESCE(p.deceased,'f') = 'f' 
-		--overledenen niet
-		AND COALESCE(p.free_member,'f') = 'f'
-		--gratis leden niet
-		AND p.membership_state IN ('paid','invoiced') -- **** uitschakelen voor jaarovergang ****
-		--AND p.membership_start < '2023-01-01' -- JAAROVERGANG		
+		--AND p.membership_state IN ('paid','invoiced') -- **** uitschakelen voor jaarovergang ****
+		--JAAROVERGANG HIERONDER
+        AND p.membership_state IN ('paid','invoiced','waiting') -- jaarovergang; REJECTS reeds verwerkt
+        AND p.membership_start < '2025-01-01' -- nieuwe leden na jaarovergang niet meetellen
+        AND NOT(p.membership_state = 'waiting' AND p.membership_end < '2024-12-31')
+        -- enkel voor fout in ERP met geannuleerde mandaten 2024
+        AND NOT(p.membership_state = 'invoiced' AND COALESCE(sm.sm_id,0)=0)	
 	--=============================================================================
 	--GRATIS LEDEN TOEVOEGEN
 	UNION ALL
