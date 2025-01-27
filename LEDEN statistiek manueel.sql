@@ -31,14 +31,22 @@ CREATE TEMP TABLE tempLEDEN_statistiek_manueel (
 INSERT INTO tempLEDEN_statistiek_manueel
 (	SELECT 	1, 'Leden: ', 1 volgnummer, 'Leden', COUNT(DISTINCT p.id), now()::date, '"Leden" en "Gratis leden" moeten samen geteld worden.'
 	FROM 	_AV_myvar v, res_partner p
+		-- enkel voor fout in ERP met geannuleerde mandaten 2024
+		LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = p.id
 	WHERE 	p.active = 't'	
 		--we tellen voor alle actieve leden
 		AND COALESCE(p.deceased,'f') = 'f' 
 		--overledenen niet
 		AND COALESCE(p.free_member,'f') = 'f'
 		--gratis leden niet
-		AND p.membership_state IN ('paid','invoiced')
-		--AND p.membership_start < '2021-01-01'
+		--AND p.membership_state IN ('paid','invoiced') -- in comment voor JAAROVERGANG
+		--JAAROVERGANG HIERONDER
+		AND p.membership_state IN ('paid','invoiced','waiting') -- jaarovergang; REJECTS reeds verwerkt
+		AND p.membership_start < '2025-01-01' -- nieuwe leden na jaarovergang niet meetellen
+		AND NOT(p.membership_state = 'waiting' AND p.membership_end < '2024-12-31')
+		-- enkel voor fout in ERP met geannuleerde mandaten 2024
+		AND NOT(p.membership_state = 'invoiced' AND COALESCE(sm.sm_id,0)=0)
+
 );
 ----------------------------------------
 -- 2/ GRATIS LEDEN aantal --------------
@@ -49,6 +57,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 	WHERE 	(p.free_member = 't')
 		AND p.active = 't'
 		AND COALESCE(p.deceased,'f') = 'f' 
+	-- GEEN LAST VAN JAAROVERGANG
 );
 ----------------------------------------
 -- 3/ NIEUWE LEDEN aantal --------------
@@ -61,7 +70,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 	FROM _AV_myvar v, res_partner p
 	WHERE p.membership_state IN ('paid','invoiced','free')
 		AND p.membership_start >= v.startdatum
-		--AND p.membership_start < '2023-01-01' -- jaarovergang
+		AND p.membership_start < '2025-01-01' -- jaarovergang
 		
 );
 ----------------------------------------
@@ -76,6 +85,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 		JOIN res_users u ON p.create_uid = u.id
 	WHERE p.membership_state IN ('paid','invoiced','free')
 		AND p.membership_start >= v.startdatum
+		AND p.membership_start < '2025-01-01' -- jaarovergang
 		AND u.login = 'apiuser' 
 		
 );
@@ -145,7 +155,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 	FROM _AV_myvar v, res_partner p
 	WHERE p.membership_end = (v.startdatum + INTERVAL 'day -1')::date
 		AND NOT(p.membership_state IN ('canceled','invoiced'))
-		--AND p.membership_start < '2023-01-01' -- jaarovergang
+		AND p.membership_start < '2024-01-01' -- jaarovergang
 );
 ----------------------------------------
 -- 5/ NIET HERNIEUWDE LEDEN procentueel -----
@@ -410,8 +420,8 @@ INSERT INTO tempLEDEN_statistiek_manueel
 			res_partner p
 			JOIN membership_membership_line ml ON p.id = ml.partner
 		WHERE ml.date_cancel BETWEEN v.startdatum AND v.einddatum
-			AND p.membership_end < now()::date --onmiddellijke opzeg
-			--AND p.membership_end < '2020-12-31' --onmiddellijke opzeg **** specifief voor jaareinde ****
+			--AND p.membership_end < now()::date --onmiddellijke opzeg
+			AND p.membership_end < '2024-12-31' --onmiddellijke opzeg **** specifief voor jaareinde ****
 			AND p.active = 't'
 		) SQ1
 );
@@ -426,8 +436,8 @@ INSERT INTO tempLEDEN_statistiek_manueel
 			res_partner p
 			JOIN membership_membership_line ml ON p.id = ml.partner
 		WHERE ml.date_cancel BETWEEN v.startdatum AND v.einddatum
-			AND p.membership_end >= now()::date --opzeg op einde vh jaar
-			--AND p.membership_end >= '2020-12-31' --opzeg op einde vh jaar **** specifief voor jaareinde ****
+			--AND p.membership_end >= now()::date --opzeg op einde vh jaar
+			AND p.membership_end = '2024-12-31' --opzeg op einde vh jaar **** specifief voor jaareinde ****
 			AND p.active = 't'	
 		) SQ1
 );
@@ -442,7 +452,7 @@ INSERT INTO tempLEDEN_statistiek_manueel
 			res_partner p
 			JOIN membership_membership_line ml ON p.id = ml.partner
 		WHERE ml.date_cancel BETWEEN v.startdatum AND v.einddatum
-			--AND p.membership_start < '2023-01-01' -- jaarovergang
+			AND p.membership_start < '2024-01-01' -- jaarovergang
 			AND p.active = 'f'	
 		) SQ1
 );
