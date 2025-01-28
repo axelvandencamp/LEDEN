@@ -5,10 +5,10 @@
 DROP TABLE IF EXISTS myvar;
 SELECT 
 	--'2016-12-31'::date AS cutoff_datum,
-	'2023-01-01'::date AS startdatum_vorigjaar,
-	'2023-12-31'::date AS einddatum_vorigjaar,
-	'2024-01-01'::date AS startdatum,
-	'2024-12-31'::date AS einddatum,  --naar volgend jaar verzetten vanaf 01/07
+	'2024-01-01'::date AS startdatum_vorigjaar,
+	'2024-12-31'::date AS einddatum_vorigjaar,
+	'2025-01-01'::date AS startdatum,
+	'2025-12-31'::date AS einddatum,  --naar volgend jaar verzetten vanaf 01/07
 	'248514'::numeric AS afdeling --(aartselaar 248646; hobokense polder 248569; gent vzw 248514)
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
