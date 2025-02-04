@@ -22,8 +22,8 @@ CREATE TEMP TABLE _AV_myvar
 	 ,afdeling NUMERIC, postcode TEXT, herkomst_lidmaatschap NUMERIC, wervende_organisatie NUMERIC, test_id NUMERIC
 	 );
 
-INSERT INTO _AV_myvar VALUES('2024-01-01',	--startdatum
-				'2025-12-31',	--einddatum
+INSERT INTO _AV_myvar VALUES('2025-01-01',	--startdatum
+				'2026-12-31',	--einddatum
 				248494, --afdeling 	
 				'2260', --postcode
 				494,  	--numeric 
