@@ -204,7 +204,7 @@ SET OGM = (SELECT i.reference
 		WHERE nh.lidmaatschapslijn = ml.id);
 --pom_paylink toevoegen
 UPDATE temp_NietHernieuwden nh
-SET pom_paylink = (SELECT 'https://pay.pom.bc/'||pom.pom_paylink_short
+SET pom_paylink = (SELECT 'https://pay.pom.be/'||pom.pom_paylink_short
 		FROM pom_paylink pom
 			JOIN account_invoice i ON i.pom_paylink_id = pom.id
 			JOIN account_invoice_line il ON i.id = il.invoice_id
