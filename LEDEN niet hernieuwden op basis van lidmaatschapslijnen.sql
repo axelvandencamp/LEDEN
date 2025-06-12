@@ -65,7 +65,7 @@ INSERT INTO temp_NietHernieuwden (
 	SELECT DISTINCT p.id,
 		p.membership_nbr lidnummer,
 		ml2.id,
-		COALESCE(p.first_name,'natuurliefhebber') aanschrijving,
+		CASE WHEN COALESCE(p.first_name,'natuurliefhebber') = '' THEN 'natuurliefhebber' ELSE COALESCE(p.first_name,'natuurliefhebber') END aanschrijving,
 		p.first_name as voornaam,
 		p.last_name as achternaam,
 		CASE
@@ -135,7 +135,7 @@ INSERT INTO temp_NietHernieuwden (
 		p.membership_cancel,
 		NULL::date lml_opgzegdatum,
 		p.membership_state,
-		COALESCE(COALESCE(a2.name,a.name),'Natuurpunt') Afdeling,
+		CASE WHEN COALESCE(COALESCE(a2.name,a.name),'Natuurpunt') = '' THEN 'Natuurpunt' ELSE COALESCE(COALESCE(a2.name,a.name),'Natuurpunt') END Afdeling,
 		mo.name herkomst_lidmaatschap,
 		p.third_payer_id,
 		CASE
@@ -204,7 +204,7 @@ SET OGM = (SELECT i.reference
 		WHERE nh.lidmaatschapslijn = ml.id);
 --pom_paylink toevoegen
 UPDATE temp_NietHernieuwden nh
-SET pom_paylink = (SELECT pom.pom_paylink_short
+SET pom_paylink = (SELECT 'https://pay.pom.bc/'||pom.pom_paylink_short
 		FROM pom_paylink pom
 			JOIN account_invoice i ON i.pom_paylink_id = pom.id
 			JOIN account_invoice_line il ON i.id = il.invoice_id
@@ -235,7 +235,8 @@ SET lml_opgzegdatum = (SELECT ml.date_cancel
 			FROM membership_membership_line ml
 			WHERE ml.id = nh.lidmaatschapslijn);
 ---------------------------------------
-SELECT * /*count(partner_id)*/ FROM  temp_NietHernieuwden nh;
+SELECT * /*count(partner_id)*/ FROM  temp_NietHernieuwden nh WHERE partner_id IN (142815,209021,133586,165065,21345,112483,119978,122886,126299,135175,148229,171130,186507,202659,226924,302422,397836)
+);
 --verzendlijst via POST
 SELECT * FROM temp_NietHernieuwden nh 
 WHERE (nh.website_gebruiker = 'neen') OR (nh.website_gebruiker = 'ja' AND nh.suppressed = 'ja')
