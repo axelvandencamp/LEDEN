@@ -69,8 +69,12 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	CASE 
 		WHEN c.id = 21 THEN COALESCE(cc.name,'') ELSE COALESCE(p.city,'') 
 	END woonplaats,
-	COALESCE(p.postbus_nbr,'') postbus,
-	CASE
+	CASE WHEN COALESCE(c.id,0) = 21 AND p.zip = '2070' THEN 'Oost-Vlaanderen'
+		WHEN COALESCE(c.id,0) = 21 THEN cs.name
+		WHEN COALESCE(c.id,0) = 166 THEN 'Nederland'
+		ELSE 'Buitenland niet NL' 
+	END provincie_state,
+	/*CASE
 		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 1000 AND 1299 THEN 'Brussel' 
 		WHEN p.country_id = 21 AND (substring(p.zip from '[0-9]+')::numeric BETWEEN 1500 AND 1999 OR substring(p.zip from '[0-9]+')::numeric BETWEEN 3000 AND 3499) THEN 'Vlaams Brabant'
 		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 2000 AND 2999  THEN 'Antwerpen' 
@@ -81,7 +85,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		WHEN p.country_id = 166 THEN 'Nederland'
 		WHEN NOT(p.country_id IN (21,166)) THEN 'Buitenland niet NL'
 		ELSE 'andere'
-	END AS provincie,
+	END AS provincie,*/
 	_crm_land(c.id) land,
 	COALESCE(cc.zip,'_')||ccs.id::text||COALESCE(p.street_nbr::text,'_')||COALESCE(p.street_bus::text,'_') adres_id,
 	p.email,
@@ -150,7 +154,8 @@ FROM 	_av_myvar v, res_partner p
 	--idem: versie voor jaarwisseling (januari voor vorige jaar)
 	--LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.state = 'paid' AND ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
 	--land, straat, gemeente info
-	JOIN res_country c ON p.country_id = c.id
+	LEFT OUTER JOIN res_country_state cs ON cs.id = p.state_id
+	LEFT OUTER JOIN res_country c ON p.country_id = c.id
 	LEFT OUTER JOIN res_country_city_street ccs ON p.street_id = ccs.id
 	LEFT OUTER JOIN res_country_city cc ON p.zip_id = cc.id
 	--herkomst lidmaatschap
@@ -270,7 +275,12 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		WHEN c.id = 21 THEN cc.name ELSE p.city 
 	END woonplaats,
 	p.postbus_nbr postbus,
-	CASE
+	CASE WHEN COALESCE(c.id,0) = 21 AND p.zip = '2070' THEN 'Oost-Vlaanderen'
+		WHEN COALESCE(c.id,0) = 21 THEN cs.name
+		WHEN COALESCE(c.id,0) = 166 THEN 'Nederland'
+		ELSE 'Buitenland niet NL' 
+	END provincie_state,
+	/*CASE
 		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 1000 AND 1299 THEN 'Brussel' 
 		WHEN p.country_id = 21 AND (substring(p.zip from '[0-9]+')::numeric BETWEEN 1500 AND 1999 OR substring(p.zip from '[0-9]+')::numeric BETWEEN 3000 AND 3499) THEN 'Vlaams Brabant'
 		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 2000 AND 2999  THEN 'Antwerpen' 
@@ -281,7 +291,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 		WHEN p.country_id = 166 THEN 'Nederland'
 		WHEN NOT(p.country_id IN (21,166)) THEN 'Buitenland niet NL'
 		ELSE 'andere'
-	END AS provincie,
+	END AS provincie,*/
 	_crm_land(c.id) land,
 	COALESCE(cc.zip,'_')||ccs.id::text||COALESCE(p.street_nbr::text,'_')||COALESCE(p.street_bus::text,'_') adres_id,
 	p.email email,
@@ -348,7 +358,8 @@ FROM 	_av_myvar v, res_partner p
 	--Voor de ontdubbeling veroorzaakt door meedere lidmaatschapslijnen
 	--LEFT OUTER JOIN (SELECT * FROM myvar v, membership_membership_line ml WHERE  ml.date_to BETWEEN v.startdatum and v.einddatum AND ml.membership_id IN (2,5,6,7,205,206,207,208)) ml ON ml.partner = p.id
 	--land, straat, gemeente info
-	JOIN res_country c ON p.country_id = c.id
+	LEFT OUTER JOIN res_country_state cs ON cs.id = p.state_id
+	LEFT OUTER JOIN res_country c ON p.country_id = c.id
 	LEFT OUTER JOIN res_country_city_street ccs ON p.street_id = ccs.id
 	LEFT OUTER JOIN res_country_city cc ON p.zip_id = cc.id
 	--herkomst lidmaatschap
