@@ -36,13 +36,7 @@ SELECT * FROM _AV_myvar;
 SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p.id database_id, 
 	p.membership_nbr lidnummer, 
-	/*CASE
-		WHEN p.gender = 'M' THEN 'Dhr.'
-		WHEN p.gender = 'V' THEN 'Mevr.'
-		ELSE pt.shortcut
-	END aanspreking,*/
 	p.gender AS geslacht,
-	--p.name as partner,
 	COALESCE(p.first_name,'') as voornaam,
 	COALESCE(p.last_name,'') as achternaam,
 	CASE
@@ -69,6 +63,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	CASE 
 		WHEN c.id = 21 THEN COALESCE(cc.name,'') ELSE COALESCE(p.city,'') 
 	END woonplaats,
+	p.postbus_nbr postbus,
 	CASE WHEN COALESCE(c.id,0) = 21 AND p.zip = '2070' THEN 'Oost-Vlaanderen'
 		WHEN COALESCE(c.id,0) = 21 THEN cs.name
 		WHEN COALESCE(c.id,0) = 166 THEN 'Nederland'
@@ -89,7 +84,6 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	_crm_land(c.id) land,
 	COALESCE(cc.zip,'_')||ccs.id::text||COALESCE(p.street_nbr::text,'_')||COALESCE(p.street_bus::text,'_') adres_id,
 	p.email,
-	--COALESCE(ml.id::text,'') ml_id,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
 	p.mobile gsm,
 	COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
@@ -241,13 +235,7 @@ UNION ALL
 SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	p.id database_id, 
 	p.membership_nbr lidnummer, 
-	/*CASE
-		WHEN p.gender = 'M' THEN 'Dhr.'
-		WHEN p.gender = 'V' THEN 'Mevr.'
-		ELSE pt.shortcut
-	END aanspreking,*/
 	p.gender AS geslacht,
-	--p.name as partner,
 	p.first_name as voornaam,
 	p.last_name as achternaam,
 	CASE
@@ -295,7 +283,6 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	_crm_land(c.id) land,
 	COALESCE(cc.zip,'_')||ccs.id::text||COALESCE(p.street_nbr::text,'_')||COALESCE(p.street_bus::text,'_') adres_id,
 	p.email email,
-	--COALESCE(ml.id::text,'') ml_id,
 	COALESCE(p.phone_work,p.phone) telefoonnr,
 	p.mobile gsm,
 	COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
