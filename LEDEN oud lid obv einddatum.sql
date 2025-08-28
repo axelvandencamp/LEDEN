@@ -11,6 +11,7 @@ SELECT * FROM _AV_myvar;
 SELECT 
 	p.id partner_id,
 	p.membership_nbr lidnummer, 
+	CASE WHEN COALESCE(p.first_name,'natuurliefhebber') = '' THEN 'natuurliefhebber' ELSE COALESCE(p.first_name,'natuurliefhebber') END aanschrijving,
 	p.first_name as voornaam,
 	p.last_name as achternaam,
 	p.street2 huisnaam,
@@ -35,6 +36,44 @@ SELECT
 	COALESCE(p.phone_work,p.phone) telefoonnr,
 	p.mobile gsm,
 	p.membership_state huidige_lidmaatschap_status,
+	-- -- OGM = '+++'||substring(wc.ogm from 1 for 3)||'/'||substring(wc.ogm from 4 for 4)||'/'||substring(wc.ogm from 8 for 5)||'+++' -- --
+	'+++'||substring(
+						(p.id*(10^(10-LENGTH(p.id::text))))+1100 ||
+						CASE WHEN (((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text = '0' THEN '97' 
+							 WHEN LENGTH((((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text) = 1 
+									THEN '0'||(((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text
+								ELSE 
+								(((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text 
+							END
+						from 1 for 3)
+	||'/'||substring(
+						(p.id*(10^(10-LENGTH(p.id::text))))+1100 ||
+						CASE WHEN (((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text = '0' THEN '97' 
+							 WHEN LENGTH((((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text) = 1 
+									THEN '0'||(((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text
+								ELSE 
+								(((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text 
+							END
+						from 4 for 4)
+	||'/'||substring(
+						(p.id*(10^(10-LENGTH(p.id::text))))+1100 ||
+						CASE WHEN (((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text = '0' THEN '97' 
+							 WHEN LENGTH((((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text) = 1 
+									THEN '0'||(((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text
+								ELSE 
+								(((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text 
+							END
+						from 8 for 5)
+	||'+++' ogm,
+	--	
+	(p.id*(10^(10-LENGTH(p.id::text))))+1100 ||
+			CASE WHEN (((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text = '0' THEN '97' 
+				 WHEN LENGTH((((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text) = 1 
+						THEN '0'||(((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text
+					ELSE 
+					(((p.id*(10^(10-LENGTH(p.id::text))))+1100)::numeric%97)::text 
+				END	ogm_num,
+	-- --
 	r.id reg,
 	COALESCE(p.membership_start,p.create_date::date) aanmaak_datum,
 	--ml.date_from lml_date_from,
@@ -73,7 +112,7 @@ FROM 	_av_myvar v, res_partner p
 	LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 	--regionale
 	LEFT OUTER JOIN res_partner r ON r.id = COALESCE(a2.partner_up_id,a.partner_up_id)
-WHERE 	p.membership_end = v.einddatum
+WHERE 	p.membership_end >= v.einddatum
 	AND p.active = 't'	
 	--we tellen voor alle actieve leden
 	AND COALESCE(p.deceased,'f') = 'f' 
