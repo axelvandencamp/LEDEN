@@ -32,12 +32,15 @@ CREATE TEMP TABLE temp_NietHernieuwden (
 	Land text,
 	Email text,
 	--email_werk text, --enkel voor belactie
-	--telefoonnr text, --enkel voor belactie
-	--gsm text, --enkel voor belactie
+	telefoonnr text, --enkel voor belactie
+	gsm text, --enkel voor belactie
 	/*street_id integer, --enkel nodig voor update stratenlijst dump gent
 	zip_id integer,
 	country_id integer,
 	crab_used boolean,*/
+	pb_bic character varying, 
+	pb_bank_rek character varying,
+	sm_mandaat_ref character varying,
 	website_gebruiker text,
 	suppressed text,
 	Aanmaakdatum date,
@@ -99,7 +102,7 @@ INSERT INTO temp_NietHernieuwden (
 		COALESCE(COALESCE(p.email,p.email_work),'') email, -- in comment voor belactie
 		/* enkel voor belactie
 		p.email,
-		p.email_work,
+		p.email_work,*/
 		--COALESCE(p.phone_work,p.phone) telefoonnr,
 		CASE
 			WHEN substr(COALESCE(p.phone_work,p.phone),1,2) = '00' THEN '+'||regexp_replace(substr(COALESCE(p.phone_work,p.phone),3,length(COALESCE(p.phone_work,p.phone))), '[^0-9]+', '', 'g')
@@ -118,12 +121,15 @@ INSERT INTO temp_NietHernieuwden (
 			ELSE p.mobile
 		END  gsm,
 		--p.mobile gsm,
-		*/
+		--*/
 		/*p.street_id, --enkel nodig voor update stratenlijst dump gent
 		p.zip_id,
 		p.country_id,
 		p.crab_used,*/
 		--/* voor "VERZENDLIJST hernieuwingen" met evaluatie websitegebruikers en suppressionlist; anders lege tabellen voorzien;
+		pb_bic, 
+		pb_bank_rek,
+		sm_mandaat_ref,
 		CASE WHEN COALESCE(w.partner_id,0) = 0 THEN 'neen' ELSE 'ja' END website_gebruiker,
 	 	CASE WHEN COALESCE(s.emailaddress,'_') = '_' THEN 'neen'  
 			 WHEN COALESCE(s.emailaddress,'_') = '_' THEN 'neen' ELSE 'ja' END suppressed,
@@ -187,7 +193,9 @@ INSERT INTO temp_NietHernieuwden (
 		LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
 		--regionale
 		LEFT OUTER JOIN res_partner r ON r.id = COALESCE(a2.partner_up_id,a.partner_up_id)
-
+		--bank/mandaat info
+		--door bank aan mandaat te linken en enkel de mandaat info te nemen ontdubbeling veroorzaakt door meerdere bankrekening nummers
+		LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, pb.bank_bic pb_bic, pb.acc_number pb_bank_rek, sm.unique_mandate_reference sm_mandaat_ref FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = p.id
 
 	WHERE p.active AND COALESCE(p.deceased,'f') = 'f'
 		AND p.membership_state = 'wait_member'
@@ -236,6 +244,7 @@ SET lml_opgzegdatum = (SELECT ml.date_cancel
 			WHERE ml.id = nh.lidmaatschapslijn);
 ---------------------------------------
 SELECT * /*count(partner_id)*/ FROM  temp_NietHernieuwden nh WHERE partner_id IN (142815,209021,133586,165065,21345,112483,119978,122886,126299,135175,148229,171130,186507,202659,226924,302422,397836)
+SELECT Partner_id, pb_bic, pb_bank_rek, sm_mandaat_ref FROM  temp_NietHernieuwden nh
 );
 --verzendlijst via POST
 SELECT * FROM temp_NietHernieuwden nh 
