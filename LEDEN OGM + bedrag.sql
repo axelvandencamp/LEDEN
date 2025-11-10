@@ -40,7 +40,8 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	COALESCE(p.last_name,'') as achternaam,
 	p.membership_state huidige_lidmaatschap_status,
 	i.reference OGM,
-	i.amount_total bedrag
+	i.amount_total bedrag,
+	'https://pay.pom.be/'||pom.pom_paylink_short pom_paylink	
 FROM 	_av_myvar v, res_partner p
 	--Voor de ontdubbeling veroorzaakt door meedere lidmaatschapslijnen
 	JOIN (SELECT partner partner_id, max(ml.id) ml_id FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product GROUP BY partner) sq1 ON sq1.partner_id = p.id
@@ -51,6 +52,8 @@ FROM 	_av_myvar v, res_partner p
 	--facturen info
 	LEFT OUTER JOIN account_invoice_line il ON il.id = ml.account_invoice_line
 	LEFT OUTER JOIN account_invoice i ON i.id = il.invoice_id
+	--pom paylink
+	LEFT OUTER JOIN pom_paylink pom ON pom.id =i.pom_paylink_id
 
 --=============================================================================
 WHERE 	p.active = 't'	
