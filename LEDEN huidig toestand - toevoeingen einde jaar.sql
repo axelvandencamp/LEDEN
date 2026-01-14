@@ -1,0 +1,183 @@
+-----------------------------------------
+--
+-- Te gebruiken voor cijfers 31/12/YYYY-1
+-- toevoeging aan cijfers voor geannuleerde mandaten die wel nog lid waren tot 31/12/YYYY-1
+-- - geannuleerde mandaten
+-- - status 'waiting'
+-- - recentste_einddatum_lidmaatschap = 31/12/YYYY-1
+-- zelfde velden als LEDEN_huidige_toestand.sql
+-----------------------------------------
+
+--=================================================================
+--
+-- REGEL voor ivm uitsluiting opgezegden herzien (of procedure van opzegging)
+--
+--=================================================================
+--SET VARIABLES
+DROP TABLE IF EXISTS _AV_myvar;
+CREATE TEMP TABLE _AV_myvar 
+	(startdatum DATE, einddatum DATE);
+INSERT INTO _AV_myvar VALUES('2025-01-01',	--startdatum
+				'2026-12-31'	--einddatum
+				);
+SELECT * FROM _AV_myvar;
+--====================================================================
+--====================================================================
+SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
+	p.id database_id, 
+	p.membership_nbr lidnummer, 
+	p.gender AS geslacht,
+	COALESCE(p.first_name,'') as voornaam,
+	COALESCE(p.last_name,'') as achternaam,
+	CASE
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.first_name) > 0 THEN p.first_name || ' en ' || p6.first_name ELSE p.first_name
+	END voornaam_lidkaart,
+	CASE
+		WHEN COALESCE(p6.id,0)>0 AND p6.membership_state = 'none' AND CHAR_LENGTH(p6.last_name) > 0 THEN p.last_name || ' - ' || p6.last_name ELSE p.last_name
+	END achternaam_lidkaart,
+	p.birthday,
+	EXTRACT(YEAR from AGE(p.birthday)) leeftijd,
+	COALESCE(p.street2,'') huisnaam,
+	CASE
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN COALESCE(ccs.name,'')
+		ELSE COALESCE(p.street,'')
+	END straat,
+	CASE
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN COALESCE(p.street_nbr,'') ELSE ''
+	END huisnummer, 
+	COALESCE(p.street_bus,'') bus,
+	CASE
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN COALESCE(cc.zip,'')
+		ELSE COALESCE(p.zip,'')
+	END postcode,
+	CASE 
+		WHEN c.id = 21 THEN COALESCE(cc.name,'') ELSE COALESCE(p.city,'') 
+	END woonplaats,
+	p.postbus_nbr postbus,
+	CASE WHEN COALESCE(c.id,0) = 21 AND p.zip = '2070' THEN 'Oost-Vlaanderen'
+		WHEN COALESCE(c.id,0) = 21 THEN cs.name
+		WHEN COALESCE(c.id,0) = 166 THEN 'Nederland'
+		ELSE 'Buitenland niet NL' 
+	END provincie_state,
+	/*CASE
+		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 1000 AND 1299 THEN 'Brussel' 
+		WHEN p.country_id = 21 AND (substring(p.zip from '[0-9]+')::numeric BETWEEN 1500 AND 1999 OR substring(p.zip from '[0-9]+')::numeric BETWEEN 3000 AND 3499) THEN 'Vlaams Brabant'
+		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 2000 AND 2999  THEN 'Antwerpen' 
+		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 3500 AND 3999  THEN 'Limburg' 
+		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 8000 AND 8999  THEN 'West-Vlaanderen' 
+		WHEN p.country_id = 21 AND substring(p.zip from '[0-9]+')::numeric BETWEEN 9000 AND 9999  THEN 'Oost-Vlaanderen' 
+		WHEN p.country_id = 21 THEN 'Wallonië'
+		WHEN p.country_id = 166 THEN 'Nederland'
+		WHEN NOT(p.country_id IN (21,166)) THEN 'Buitenland niet NL'
+		ELSE 'andere'
+	END AS provincie,*/
+	_crm_land(c.id) land,
+	COALESCE(cc.zip,'_')||ccs.id::text||COALESCE(p.street_nbr::text,'_')||COALESCE(p.street_bus::text,'_') adres_id,
+	p.email,
+	COALESCE(p.phone_work,p.phone) telefoonnr,
+	p.mobile gsm,
+	COALESCE(COALESCE(a2.name,a.name),'onbekend') Afdeling,
+	COALESCE(mo.name,'') herkomst_lidmaatschap,
+	p.membership_state huidige_lidmaatschap_status,
+	COALESCE(p.membership_start,p.create_date::date) aanmaak_datum,
+	--ml.date_from lml_date_from,
+	p.membership_start Lidmaatschap_startdatum, 
+	p.membership_stop Lidmaatschap_einddatum,  
+	p.membership_pay_date betaaldatum,
+	p.membership_renewal_date hernieuwingsdatum,
+	p.membership_end recentste_einddatum_lidmaatschap,
+	p.membership_cancel membership_cancel,
+	_crm_opzegdatum_membership(p.id) opzegdatum_LML,
+	CASE	--SELECT * FROM res_partner_corporation_type
+			WHEN p.organisation_type_id IN (1,3,5,7,8,16) THEN 'Intern'
+			WHEN p.corporation_type_id BETWEEN 1 AND 12 THEN 'Vennootschap'
+			WHEN p.corporation_type_id = 13 THEN 'Publiekrechterlijk'
+			WHEN p.corporation_type_id IN (15,16) THEN 'Stichting'
+			WHEN p.corporation_type_id = 17 THEN 'Vereniging'
+			ELSE 'Private persoon'
+	END rechtspersoon,
+	p.active,
+	p2.name wervend_lid,
+	p2.membership_nbr wl_lidnummer,
+	p5.name wervende_organisatie,
+	mm1.name tijdschrift1,
+	mm2.name tijdschrift2,
+	CASE
+		WHEN COALESCE(p.no_magazine,'f') = 't' THEN 1 ELSE 0 
+	END gn_magazine_gewenst,
+	CASE
+		WHEN p.address_state_id = 2 THEN 1 ELSE 0
+	END adres_verkeerd,
+	CASE
+		WHEN COALESCE(sm.sm_id,0) > 0 THEN 1 ELSE 0
+	END DOMI,
+	CASE
+		WHEN p.membership_start >= v.startdatum THEN 1 ELSE 0
+	END nieuw_lid,
+	CASE
+		WHEN p.membership_start < v.startdatum THEN 1 ELSE 0
+	END hernieuwing,
+	CASE
+		WHEN COALESCE(p.recruiting_organisation_id,0) > 0 THEN 1 ELSE 0
+	END via_afdeling,
+	CASE
+		WHEN COALESCE(p.opt_out_letter,'f') = 'f' THEN 0 ELSE 1
+	END wenst_geen_post_van_NP,
+	CASE
+		WHEN COALESCE(p.opt_out,'f') = 'f' THEN 0 ELSE 1
+	END wenst_geen_email_van_NP,
+	p.iets_te_verbergen nooit_contacteren,
+	--CASE WHEN mo.name = 'website' THEN 1 ELSE 0 END via_website,
+	--CASE WHEN mo.name <> 'website' THEN 1 ELSE 0 END via_andere,
+	CASE WHEN login = 'apiuser' THEN 1 ELSE 0 END via_website,
+	CASE WHEN login <> 'apiuser' THEN 1 ELSE 0 END via_andere
+	--COALESCE(i.reference,'') OGM	--voor ledencijfers OGM code niet meegeven; geeft verdubbelingen
+FROM 	_av_myvar v, res_partner p
+	--Voor de ontdubbeling veroorzaakt door meedere lidmaatschapslijnen
+	LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
+	--idem: versie voor jaarwisseling (januari voor vorige jaar)
+	--LEFT OUTER JOIN (SELECT * FROM _av_myvar v, membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE  ml.state = 'paid' AND ml.date_to BETWEEN v.startdatum and v.einddatum AND pp.membership_product) ml ON ml.partner = p.id
+	--land, straat, gemeente info
+	LEFT OUTER JOIN res_country_state cs ON cs.id = p.state_id
+	LEFT OUTER JOIN res_country c ON p.country_id = c.id
+	LEFT OUTER JOIN res_country_city_street ccs ON p.street_id = ccs.id
+	LEFT OUTER JOIN res_country_city cc ON p.zip_id = cc.id
+	--herkomst lidmaatschap
+	LEFT OUTER JOIN res_partner_membership_origin mo ON p.membership_origin_id = mo.id
+	--aangemaakt door 
+	JOIN res_users u ON u.id = p.create_uid
+	--afdeling vs afdeling eigen keuze
+	LEFT OUTER JOIN res_partner a ON p.department_id = a.id
+	LEFT OUTER JOIN res_partner a2 ON p.department_choice_id = a2.id
+	--bank/mandaat info
+	--door bank aan mandaat te linken en enkel de mandaat info te nemen ontdubbeling veroorzaakt door meerdere bankrekening nummers
+	LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, sm.id sm_id, sm.state sm_state FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'cancel') sm ON pb_partner_id = p.id
+	--facturen info
+	LEFT OUTER JOIN account_invoice_line il ON il.id = ml.account_invoice_line
+	LEFT OUTER JOIN account_invoice i ON i.id = il.invoice_id
+	--aanspreking
+	LEFT OUTER JOIN res_partner_title pt ON p.title = pt.id
+	--parnter info
+	LEFT OUTER JOIN res_partner a3 ON i.partner_id = a3.id
+	LEFT OUTER JOIN res_partner p6 ON p.relation_partner_id = p6.id
+	--wervend lid
+	LEFT OUTER JOIN res_partner p2 ON p.recruiting_member_id = p2.id
+	--wervende organisatie
+	LEFT OUTER JOIN res_partner p5 ON p.recruiting_organisation_id = p5.id
+	--tijdschriften
+	LEFT OUTER JOIN mailing_mailing mm1 ON mm1.id = p.periodical_1_id
+	LEFT OUTER JOIN mailing_mailing mm2 ON mm2.id = p.periodical_2_id
+--=============================================================================
+WHERE 	p.active = 't'	
+	--we tellen voor alle actieve leden
+	AND COALESCE(p.deceased,'f') = 'f' 
+	--overledenen niet
+	AND p.membership_end = '2025-12-31'
+	--geannuleerde mandaten lid tot eind vorig jaar
+	--AND p.membership_state = 'waiting'
+	--opgezegden lid tot eind vorig jaar
+	--AND p.membership_state IN ('old','canceled','none')
+	--wachtend lidmaatschap lid tot eind vorig jaar (nieuwe open factuur sinds 31/12/YYYY-1)
+	AND p.membership_state IN ('wait_member')
+	--
+
