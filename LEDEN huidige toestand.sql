@@ -184,8 +184,7 @@ WHERE 	p.active = 't'
 	--overledenen niet
 	AND COALESCE(p.free_member,'f') = 'f'
 	--gratis leden niet
-	AND p.membership_state IN ('paid','invoiced') -- **** uitschakelen voor jaarovergang ****
-	--AND p.membership_start < '2021-01-01' -- JAAROVERGANG
+	AND p.membership_state IN ('paid','invoiced') -- voor jaarovergang zie ook LEDEN huidige toestand toevoeging jaarovergang.sql
 	--AND (ml.date_from BETWEEN v.startdatum and v.einddatum OR v.startdatum BETWEEN ml.date_from AND ml.date_to) AND ml.membership_id IN (2,5,6,7,205,206,207,208)
 	--enkel lidmaatschapsproduct lijnen met een einddatum in 2015
 	--lidmaatschap start voor 01/01/2013
