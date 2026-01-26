@@ -25,9 +25,9 @@ FROM 	res_partner p
 	LEFT OUTER JOIN mailing_mailing mm1 ON p.periodical_1_id = mm1.id
 	LEFT OUTER JOIN mailing_mailing mm2 ON p.periodical_2_id = mm2.id
 
-WHERE SQ1.date_from BETWEEN '2024-09-01' AND '2024-12-31'
-	AND p.membership_start < '2023-01-01' --AND p.membership_start < '2024-01-01'
-	AND SQ1.previous_date_to < '2023-12-31' --AND SQ1.previous_date_to < '2024-01-01'
+WHERE SQ1.date_from BETWEEN '2025-09-01' AND '2025-12-31'
+	AND p.membership_start < '2024-01-01' --AND p.membership_start < '2024-01-01'
+	AND SQ1.previous_date_to < '2024-12-31' --AND SQ1.previous_date_to < '2024-01-01'
 	AND SQ1.agey_from_vs_prevto < 5
 	--AND SQ1.agey_from_vs_prevto >= 5
 
