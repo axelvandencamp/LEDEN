@@ -12,7 +12,7 @@ FROM 	res_partner p
 		ml.date_from, LAG(ml.date_from,1,ml.date_from) OVER (PARTITION BY ml.partner ORDER BY ml.date_to ASC) previous_date_from,
 		ml.date_to, LAG(ml.date_to,1,ml.date_to) OVER (PARTITION BY ml.partner ORDER BY ml.date_to ASC) previous_date_to,
 		DATE_PART('YEAR',AGE(ml.date_from,(LAG(ml.date_to,1,ml.date_to) OVER (PARTITION BY ml.partner ORDER BY ml.date_to ASC)))) AGEY_from_vs_prevto,
-		DATE_PART('MONTH',AGE(ml.date_from,LAG(ml.date_to,1,ml.date_to) OVER (PARTITION BY ml.partner ORDER BY ml.date_to ASC))) AGEM_from_vs_prevto,
+		DATE_PART('MONTH',AGE(ml.date_from,(LAG(ml.date_to,1,ml.date_to) OVER (PARTITION BY ml.partner ORDER BY ml.date_to ASC)))) AGEM_from_vs_prevto,
 		ml.state, pp.name_template
 	FROM membership_membership_line ml
 		JOIN product_product pp ON pp.id = ml.membership_id
@@ -28,7 +28,7 @@ FROM 	res_partner p
 WHERE SQ1.date_from BETWEEN '2025-09-01' AND '2025-12-31'
 	AND p.membership_start < '2024-01-01' --AND p.membership_start < '2024-01-01'
 	AND SQ1.previous_date_to < '2024-12-31' --AND SQ1.previous_date_to < '2024-01-01'
-	AND SQ1.agey_from_vs_prevto < 5
+	AND (SQ1.agey_from_vs_prevto >= 1 AND SQ1.agem_from_vs_prevto > 0)
 	--AND SQ1.agey_from_vs_prevto >= 5
 
 /*
