@@ -33,7 +33,7 @@ FROM 	res_partner p
 	LEFT OUTER JOIN membership_cancel_reason mcr ON mcr.id = ml.membership_cancel_id
 	-- herkomst (niet in default)
 	--LEFT OUTER JOIN res_partner_membership_origin mo ON mo.id = p.membership_origin_id
-WHERE	--COALESCE(p.membership_cancel,'1900-01-01')<>'1900-01-01'
-	--OR COALESCE(_crm_opzegdatum_membership(p.id),'1900-01-01')<>'1900-01-01'
+WHERE	COALESCE(p.membership_cancel,'1900-01-01')<>'1900-01-01'
+	OR COALESCE(_crm_opzegdatum_membership(p.id),'1900-01-01')<>'1900-01-01'
 	-- specifieke periode (niet in default)
 	--COALESCE(ml.date_cancel,p.membership_cancel) BETWEEN '2025-01-01' AND '2025-12-31'
