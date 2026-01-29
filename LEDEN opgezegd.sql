@@ -1,5 +1,7 @@
 -----------------------------------------------------------------------
--- LEDEN opgezegd: aangemaakt nav crisis RvB/Ineos
+-- LEDEN opgezegd
+-- - default zoals in Jasper zonder lijnen in comment
+-- - lijnen in comment voor opzegging in bepaald jaar met herkomst
 -----------------------------------------------------------------------
 SELECT	p.id,
 	p.membership_state status,
@@ -22,10 +24,16 @@ SELECT	p.id,
 	DATE_PART('MONTH',COALESCE(ml.date_cancel,p.membership_cancel)) opzeg_maand,
 	DATE_PART('WEEK',COALESCE(ml.date_cancel,p.membership_cancel)) opzeg_week,
 	DATE_PART('DAY',COALESCE(ml.date_cancel,p.membership_cancel)) opzeg_dag
+	-- herkomst (niet in default)
+	--, mo.name herkomst
 FROM 	res_partner p
 	LEFT OUTER JOIN partner_inactive pi ON pi.id = p.inactive_id
 	JOIN (SELECT MAX(ml.id) max_ml, ml.partner FROM membership_membership_line ml WHERE COALESCE(ml.date_cancel,'1900-01-01')<>'1900-01-01' GROUP BY ml.partner) SQ1 ON SQ1.partner = p.id
 	JOIN membership_membership_line ml ON ml.id = SQ1.max_ml
 	LEFT OUTER JOIN membership_cancel_reason mcr ON mcr.id = ml.membership_cancel_id
-WHERE	COALESCE(p.membership_cancel,'1900-01-01')<>'1900-01-01'
-	OR COALESCE(_crm_opzegdatum_membership(p.id),'1900-01-01')<>'1900-01-01'
+	-- herkomst (niet in default)
+	--LEFT OUTER JOIN res_partner_membership_origin mo ON mo.id = p.membership_origin_id
+WHERE	--COALESCE(p.membership_cancel,'1900-01-01')<>'1900-01-01'
+	--OR COALESCE(_crm_opzegdatum_membership(p.id),'1900-01-01')<>'1900-01-01'
+	-- specifieke periode (niet in default)
+	--COALESCE(ml.date_cancel,p.membership_cancel) BETWEEN '2025-01-01' AND '2025-12-31'
