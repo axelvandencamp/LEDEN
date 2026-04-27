@@ -4,10 +4,10 @@
 DROP TABLE IF EXISTS myvar;
 SELECT 
 	--'2016-12-31'::date AS cutoff_datum,
-	'2024-01-01'::date AS startdatum_vorigjaar,
-	'2024-12-31'::date AS einddatum_vorigjaar,
-	'2025-01-01'::date AS startdatum,
-	'2025-12-31'::date AS einddatum,  --naar volgend jaar verzetten vanaf 01/07
+	'2025-01-01'::date AS startdatum_vorigjaar,
+	'2025-12-31'::date AS einddatum_vorigjaar,
+	'2026-01-01'::date AS startdatum,
+	'2026-12-31'::date AS einddatum,  --naar volgend jaar verzetten vanaf 01/07
 	'248514'::numeric AS afdeling --(aartselaar 248646; hobokense polder 248569; gent vzw 248514)
 INTO TEMP TABLE myvar;
 SELECT * FROM myvar;
@@ -17,6 +17,20 @@ SELECT * FROM myvar;
 --INSERT INTO temp_NietHernieuwden (	
 SELECT DISTINCT p.id,
 	p.membership_state status,
+
+	CASE
+		WHEN c.id = 21 AND p.crab_used = 'true' THEN COALESCE(cc.zip,'')
+		ELSE COALESCE(p.zip,'')
+	END ||' '||
+	CASE 
+		WHEN c.id = 21 THEN COALESCE(cc.name,'') ELSE COALESCE(p.city,'') 
+	END woonplaats,
+	CASE WHEN COALESCE(c.id,0) = 21 AND p.zip = '2070' THEN 'Oost-Vlaanderen'
+		WHEN COALESCE(c.id,0) = 21 THEN cs.name
+		WHEN COALESCE(c.id,0) = 166 THEN 'Nederland'
+		ELSE 'Buitenland niet NL' 
+	END provincie_state,
+	
 	p.create_date::date aanmaakdatum,
 	--ml.create_date::date start_lidmaatschap,
 	p.membership_start Lidmaatschap_startdatum, 
@@ -24,6 +38,7 @@ SELECT DISTINCT p.id,
 	p.membership_pay_date Betaaldatum, 
 	p.membership_end Recentste_einddatum_lidmaatschap, 
 	DATE_PART('YEAR',AGE(p.membership_end,p.membership_start)) duurtijd_j,
+	DATE_PART('YEAR',p.membership_start) start_jaar,
 	p.membership_cancel p_opzegdatum, --opzegdatum 
 	--ml.date_cancel ml_opzegdatum,
 	--COALESCE(ml.date_cancel,p.membership_cancel) opzegdatum,
@@ -35,6 +50,7 @@ SELECT DISTINCT p.id,
 	--DATE_PART('DAY',COALESCE(ml.date_cancel,p.membership_cancel)) opzeg_dag
 	-- herkomst (niet in default)
 	, COALESCE(mo.name,'') herkomst
+	, COALESCE(p.deceased,'false') overleden
 FROM	myvar v, res_partner p
 	JOIN (SELECT MAX(ml.id) ml_id, partner FROM membership_membership_line ml JOIN product_product pp ON pp.id = ml.membership_id WHERE ml.state = 'paid' GROUP BY partner) ml1 ON ml1.partner = p.id
 	JOIN membership_membership_line ml ON ml.id = ml1.ml_id
@@ -48,8 +64,12 @@ FROM	myvar v, res_partner p
 	--bank/mandaat info
 	--door bank aan mandaat te linken en enkel de mandaat info te nemen ontdubbeling veroorzaakt door meerdere bankrekening nummers
 	--LEFT OUTER JOIN (SELECT pb.id pb_id, pb.partner_id pb_partner_id, pb.bank_bic pb_bic, pb.acc_number pb_bank_rek, sm.unique_mandate_reference sm_mandaat_ref FROM res_partner_bank pb JOIN sdd_mandate sm ON sm.partner_bank_id = pb.id WHERE sm.state = 'valid') sm ON pb_partner_id = p.id
-
-WHERE p.active AND COALESCE(p.deceased,'f') = 'f'
+	--land, straat, gemeente info
+	LEFT OUTER JOIN res_country_state cs ON cs.id = p.state_id
+	LEFT OUTER JOIN res_country c ON p.country_id = c.id
+	LEFT OUTER JOIN res_country_city_street ccs ON p.street_id = ccs.id
+	LEFT OUTER JOIN res_country_city cc ON p.zip_id = cc.id
+WHERE p.active --AND COALESCE(p.deceased,'f') = 'f'
 	AND p.membership_end = v.einddatum_vorigjaar
 	AND NOT(p.id IN 
 			(SELECT p.id FROM myvar v, res_partner p
