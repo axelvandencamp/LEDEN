@@ -22,9 +22,9 @@ CREATE TEMP TABLE _AV_myvar
 	 ,afdeling NUMERIC, postcode TEXT, herkomst_lidmaatschap NUMERIC, wervende_organisatie NUMERIC, test_id NUMERIC
 	 );
 
-INSERT INTO _AV_myvar VALUES('2025-01-01',	--startdatum
-				'2026-12-31',	--einddatum
-				248494, --afdeling 	
+INSERT INTO _AV_myvar VALUES('2026-01-01',	--startdatum
+				'2027-12-31',	--einddatum
+				248617, --afdeling 	
 				'2260', --postcode
 				494,  	--numeric 
 				248585,	--wervende_organisatie
@@ -92,6 +92,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	COALESCE(p.membership_start,p.create_date::date) aanmaak_datum,
 	--ml.date_from lml_date_from,
 	p.membership_start Lidmaatschap_startdatum, 
+	EXTRACT(year FROM (AGE(now()::date,p.membership_start))) duurtijd,
 	p.membership_stop Lidmaatschap_einddatum,  
 	p.membership_pay_date betaaldatum,
 	p.membership_renewal_date hernieuwingsdatum,
@@ -207,7 +208,7 @@ WHERE 	p.active = 't'
 	--	COALESCE(p.recruiting_organisation_id,0) IN (248509,248659,248643,248589,248546,248502,248622,248588,248574,248520,17130)
 	--	)
 	--per afdeling
-	--AND COALESCE(a2.id,a.id) = v.afdeling
+	AND COALESCE(a2.id,a.id) = v.afdeling
 	--per postcode
 	--AND cc.zip = v.postcode
 	--AND cc.zip IN ('1540','1547','1570')
@@ -290,6 +291,7 @@ SELECT	DISTINCT--COUNT(p.id) _aantal, now()::date vandaag
 	--NULL::date lml_date_from,
 	COALESCE(p.create_date::date,p.membership_start) aanmaak_datum,
 	p.membership_start Lidmaatschap_startdatum, 
+	EXTRACT(year FROM (AGE(now()::date,p.membership_start))) duurtijd,
 	p.membership_stop Lidmaatschap_einddatum,  
 	p.membership_pay_date betaaldatum,
 	p.membership_renewal_date hernieuwingsdatum,
@@ -381,7 +383,7 @@ WHERE 	p.active = 't'
 	AND COALESCE(p.free_member,'f') = 't'
 	--gratis leden niet
 	--per afdeling
-	--AND COALESCE(a2.id,a.id) = v.afdeling
+	AND COALESCE(a2.id,a.id) = v.afdeling
 	--per postcode
 	--AND cc.zip = v.postcode
 	--AND cc.zip IN ('1540','1547','1570')
