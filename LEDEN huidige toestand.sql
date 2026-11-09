@@ -208,7 +208,7 @@ WHERE 	p.active = 't'
 	--	COALESCE(p.recruiting_organisation_id,0) IN (248509,248659,248643,248589,248546,248502,248622,248588,248574,248520,17130)
 	--	)
 	--per afdeling
-	AND COALESCE(a2.id,a.id) = v.afdeling
+	--AND COALESCE(a2.id,a.id) = v.afdeling
 	--per postcode
 	--AND cc.zip = v.postcode
 	--AND cc.zip IN ('1540','1547','1570')
@@ -383,7 +383,7 @@ WHERE 	p.active = 't'
 	AND COALESCE(p.free_member,'f') = 't'
 	--gratis leden niet
 	--per afdeling
-	AND COALESCE(a2.id,a.id) = v.afdeling
+	--AND COALESCE(a2.id,a.id) = v.afdeling
 	--per postcode
 	--AND cc.zip = v.postcode
 	--AND cc.zip IN ('1540','1547','1570')
